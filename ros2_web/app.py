@@ -1,3 +1,17 @@
+"""
+===AÇIKLAMA===
+
+-Terminalde dosyanın bulunduğu dizine git
+-"python3 app.py" ile çalıştır
+-Terminaldeki linke tıkla
+
+KULLANIM:
+-Sağdaki alana çalıştırmak istediğin dosyanın tam pathini yaz
+-Toggle ayarla (webdeki mi yoksa lokaldeki mi terminali kullanmak istiyorsun)
+-"Save" butonuna bastıktan sonra "Run" ile çalıştır
+
+"""
+
 import os
 import pty
 import subprocess
@@ -63,6 +77,7 @@ def run_script():
         final_path = "/".join(kayitli_path.split("/")[:-1])
         file_name = kayitli_path.split("/")[-1]
 
+        # HANGİ ARAYÜZ OLDUĞU BURADA
         if kayitli_toggle == "OFF":
             # Yeni terminal penceresinde aç (Gnome Terminal)
             komut = ['gnome-terminal', '--', 'bash', '-c', f'cd {final_path} && python3 {file_name}; exec bash']
