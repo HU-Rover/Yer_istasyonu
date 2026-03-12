@@ -23,49 +23,67 @@ app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # --- TERMINAL İÇİN GLOBAL DEĞİŞKENLER ---
-fd = None
-child_pid = None
-path = ""
-toggle = ""
+fd1 = None
+child_pid1 = None
 
-def terminal_ciktilarini_oku():
-    global fd
+fd2 = None
+child_pid2 = None
+
+# Arayüzden gelen global değişkenler
+kayitli_path = ""
+kayitli_toggle = "OFF"
+
+# --- 1. TERMINAL OKUMA DÖNGÜSÜ ---
+def terminal_ciktilarini_oku_1():
+    global fd1
     max_read_bytes = 1024 * 20
     while True:
         socketio.sleep(0.01)
-        if fd:
+        if fd1:
             timeout_sec = 0
-            (data_ready, _, _) = select.select([fd], [], [], timeout_sec)
+            (data_ready, _, _) = select.select([fd1], [], [], timeout_sec)
             if data_ready:
                 try:
-                    out = os.read(fd, max_read_bytes).decode('utf-8', errors='replace')
+                    out = os.read(fd1, max_read_bytes).decode('utf-8', errors='replace')
                     socketio.emit('terminal-cikti', {'output': out})
+                except OSError:
+                    pass
+
+# --- 2. TERMINAL OKUMA DÖNGÜSÜ ---
+def terminal_ciktilarini_oku_2():
+    global fd2
+    max_read_bytes = 1024 * 20
+    while True:
+        socketio.sleep(0.01)
+        if fd2:
+            timeout_sec = 0
+            (data_ready, _, _) = select.select([fd2], [], [], timeout_sec)
+            if data_ready:
+                try:
+                    out = os.read(fd2, max_read_bytes).decode('utf-8', errors='replace')
+                    socketio.emit('terminal-cikti-2', {'output': out})
                 except OSError:
                     pass
 
 # --- ACİL DURDURMA (EMERGENCY STOP) ---
 @app.route('/acil-stop', methods=['POST'])
 def acil_stop():
-    global fd, kayitli_path
+    global fd1, fd2, kayitli_path
     try:
-        if fd:
-            # Flask sunucusunu (app.py) korumak için sadece hedef isimleri vuracağız.
+        if fd1:
             file_name = ""
             if kayitli_path:
                 file_name = os.path.basename(kayitli_path)
             
-            # ros2 run komutlarını ve uzaktan_kumanda düğümünü durdur
             kill_cmd = "pkill -f 'ros2 run' ; pkill -f 'uzaktan_kumanda'"
-            
-            # Eğer arayüzden dinamik bir dosya çalıştırıldıysa onu da vur
             if file_name:
                 kill_cmd += f" ; pkill -f '{file_name}'"
             
-            # Terminale yazılacak tam komut
             komut = f"echo '\n🛑 SISTEM DURDURULUYOR...' && {kill_cmd} && echo '✅ Arka plan islemleri temizlendi.'\r\n"
             
-            os.write(fd, komut.encode('utf-8'))
-            
+            # Acil stop komutunu 1. terminalde çalıştır
+            os.write(fd1, komut.encode('utf-8'))
+        
             return jsonify({"durum": "basarili", "mesaj": "Tüm arka plan işlemleri durduruldu!"})
         else:
             return jsonify({"durum": "hata", "mesaj": "Terminal henüz hazır değil."}), 500
@@ -73,104 +91,78 @@ def acil_stop():
     except Exception as e:
         return jsonify({"durum": "hata", "mesaj": str(e)}), 500
 
-#sabit komut (uzaktan kumanda)
+#sabit komut (uzaktan kumanda) -> (1.) TERMİNALDE ÇALIŞIR
 @app.route('/sabit-komut', methods=['POST'])
 def sabit_komut_calistir():
-    global fd
+    global fd1
     try:
-        if fd:
-            # 1. Ekrana bildirim yazdır.
-            # 2. ros2 run komutunu nohup ile başlat.
-            # 3. Çıktıları (/dev/null) içine at ve arka planda çalıştır (&).
+        if fd1:
             sabit_kod = "echo '\n🎮 [uzaktan_kumanda] arka planda baslatildi...' && nohup ros2 run motor_kontrol uzaktan_kumanda > /dev/null 2>&1 &\r\n"
+            os.write(fd1, sabit_kod.encode('utf-8'))
             
-            # Komutu doğrudan arayüzdeki gömülü terminale yazdırıyoruz
-            os.write(fd, sabit_kod.encode('utf-8'))
-            
-            return jsonify({"durum": "basarili", "mesaj": "Uzaktan kumanda arka planda başlatıldı!"})
+            return jsonify({"durum": "basarili", "mesaj": "Uzaktan kumanda arka planda başlatıldı (Terminal 1)!"})
         else:
-            return jsonify({"durum": "hata", "mesaj": "Terminal henüz hazır değil."}), 500
+            return jsonify({"durum": "hata", "mesaj": "Terminal 1 henüz hazır değil."}), 500
             
     except Exception as e:
         return jsonify({"durum": "hata", "mesaj": str(e)}), 500
 
-
-# Arayüzden gelen global değişkenler
-kayitli_path = ""
-kayitli_toggle = "OFF"
-
+#jetson kodu -> (2.) TERMINALDE CALISIR
+@app.route('/jetson-kodu', methods=['POST'])
+def jetson_kodu():
+    global fd2
+    try:
+        if fd2:
+            jetson_kod = "echo '\n🎮 [jetson] baslatildi...' && ros2 run motor_kontrol uzaktan_kumanda\r\n"
+            os.write(fd2, jetson_kod.encode('utf-8'))
+            
+            return jsonify({"durum": "basarili", "mesaj": "Jetson kodu  başlatıldı (Terminal 2)!"})
+        else:
+            return jsonify({"durum": "hata", "mesaj": "Terminal 2 henüz hazır değil."}), 500
+            
+    except Exception as e:
+        return jsonify({"durum": "hata", "mesaj": str(e)}), 500
 
 @app.route('/', methods=['GET'])
 def index():
     return render_template("index.html")
 
-# 1. AŞAMA: OK Butonuna basma
-@app.route('/ayarlari-kaydet', methods=['POST'])
-def save_settings():
-    global kayitli_path, kayitli_toggle
-    
-    data = request.get_json()
-    kayitli_path = data.get("path", "")
-    kayitli_toggle = data.get("toggle", "OFF").upper()
-    
-    return jsonify({"durum": "basarili", "mesaj": f"Settings saved! (Toggle: {kayitli_toggle})"})
-
-# 2. AŞAMA: Çalıştır Butonuna basma
-@app.route('/script-calistir', methods=['POST'])
-def run_script():
-    global fd, kayitli_path, kayitli_toggle
-    
-    try:
-        if not kayitli_path:
-            return jsonify({"durum": "hata", "mesaj": "First save a file path!"}), 400
-        
-        final_path = "/".join(kayitli_path.split("/")[:-1])
-        file_name = kayitli_path.split("/")[-1]
-
-        # HANGİ ARAYÜZ OLDUĞU BURADA
-        if kayitli_toggle == "OFF":
-            # Yeni terminal penceresinde aç (Gnome Terminal)
-            komut = ['gnome-terminal', '--', 'bash', '-c', f'cd {final_path} && python3 {file_name}; exec bash']
-            subprocess.Popen(komut, cwd=final_path)
-            mesaj = "Script has started on a new GNOME terminal"
-            
-        else:
-            # Web arayüzündeki terminalde aç
-            if fd is None:
-                return jsonify({"durum": "hata", "mesaj": "Web terminal is not initialized!"}), 400
-            
-            # 1. echo ile ekrana bildirim yazdır.
-            # 2. cd ile klasöre git.
-            # 3. Kodu çalıştır, çıktıları çöpe at (> /dev/null 2>&1) ve arka plana al (&)
-            komut_str = f"echo '\n🚀 [{file_name}] arka planda baslatildi...' && cd {final_path} && nohup ./{file_name} > /dev/null 2>&1 &\r\n"
-            
-            os.write(fd, komut_str.encode('utf-8'))
-            mesaj = "Script has started silently in the background"
-            
-        return jsonify({"durum": "basarili", "mesaj": mesaj})
-        
-    except Exception as e:
-        return jsonify({"durum": "hata", "mesaj": str(e)}), 500
-
-# --- 2. WEBSOCKET ROTALARI ---
+# --- WEBSOCKET ROTALARI (PTY BAŞLATMA) ---
 @socketio.on('connect')
 def baglanti_kuruldu():
-    global fd, child_pid
-    if child_pid is None:
-        (child_pid, fd) = pty.fork()
-        if child_pid == 0:
+    global fd1, child_pid1, fd2, child_pid2
+    
+    # 1. Terminal PTY
+    if child_pid1 is None:
+        (child_pid1, fd1) = pty.fork()
+        if child_pid1 == 0:
             os.environ['TERM'] = 'xterm-256color'
             subprocess.run(['bash'])
         else:
-            socketio.start_background_task(target=terminal_ciktilarini_oku)
+            socketio.start_background_task(target=terminal_ciktilarini_oku_1)
 
+    # 2. Terminal PTY
+    if child_pid2 is None:
+        (child_pid2, fd2) = pty.fork()
+        if child_pid2 == 0:
+            os.environ['TERM'] = 'xterm-256color'
+            subprocess.run(['bash'])
+        else:
+            socketio.start_background_task(target=terminal_ciktilarini_oku_2)
+
+# Terminal 1'den gelen klavye girdileri
 @socketio.on('terminal-girdi')
-def terminal_girdi(data):
-    global fd
-    if fd:
-        os.write(fd, data['input'].encode('utf-8'))
+def terminal_girdi_1(data):
+    global fd1
+    if fd1:
+        os.write(fd1, data['input'].encode('utf-8'))
 
-
+# Terminal 2'den gelen klavye girdileri
+@socketio.on('terminal-girdi-2')
+def terminal_girdi_2(data):
+    global fd2
+    if fd2:
+        os.write(fd2, data['input'].encode('utf-8'))
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True, allow_unsafe_werkzeug=True)
