@@ -37,6 +37,9 @@
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
         }
 
         /* Sağ Panel (Butonlar) */
@@ -49,15 +52,16 @@
             text-align: center;
         }
 
-        /* Terminal Kutusu Tasarımı */
-        #terminal-container {
+        /* Terminal Kutusu Tasarımı (Ortak Class) */
+        .terminal-kutu {
             width: 100%;
-            height: 500px;
+            height: 500px; /* Ekrana daha rahat sığması için 300px tutuldu */
             border: 2px solid #333;
             padding: 10px;
             background-color: #000;
             border-radius: 8px;
             box-sizing: border-box;
+            overflow: hidden;
         }
 
         /* Buton Tasarımı */
@@ -85,36 +89,27 @@
     <div class="ana-konteyner">
         
         <div class="sol-panel">
-            <h2>💻 Ubuntu Terminal</h2>
-            <div id="terminal-container"></div>
+            <h2>💻 Ubuntu Terminal 1</h2>
+            <div id="terminal-container-1" class="terminal-kutu"></div>
+            
+            <h2>💻 Ubuntu Terminal 2</h2>
+            <div id="terminal-container-2" class="terminal-kutu"></div>
         </div>
 
         <div class="sag-panel">
             <h2>⚙️ Control Panel</h2>
+            <br>
             
-            <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin-bottom: 20px; text-align: left;">
-                <label>File Path To Run:<br>
-                <textarea id="pathInput" rows="2" style="width: 100%; margin-top: 5px;"></textarea>
-                </label><br><br>
-                
-                <label>______________________________________<br><br>ON: Web Terminal / OFF: Local Terminal<br><br>
-                <button type="button" id="toggleBtn" style="padding: 10px 20px; font-weight: bold; cursor: pointer;">OFF</button>
-                
-                <button type="button" onclick="ayarlariKaydet()" style="padding: 10px 20px; font-weight: bold; cursor: pointer; margin-left: 10px; background-color: #28a745; color: white; border: none; border-radius: 4px;">Save</button>
-                
-                <p id="ayarSonuc" style="font-size: 14px; margin-top: 10px; min-height: 20px;"></p>
-            </div>
+            <button class="btn" onclick="arkaplanKumandaKodu()" style="background-color: #28a745;">
+                ⚙️ Kumanda Kodu Arkaplan (Terminal 1)
+            </button>
 
-            <hr style="border: 1px solid #ddd; margin-bottom: 20px;">
-
-            <button class="btn" onclick="scriptiBaslat()">Run Script</button>
-
-            <button class="btn" onclick="sabitKoduBaslat()" style="background-color: #28a745;">
-                ⚙️ Sabit Kodu Çalıştır
+            <button class="btn" onclick="jetsonKodu()" style="background-color: #1d7c32; font-weight: bold; border: 2px solid darkred;">
+                ⚙️ Jetson kodu (Terminal 2)
             </button>
 
             <button class="btn" onclick="acilStop()" style="background-color: #dc3545; font-weight: bold; border: 2px solid darkred;">
-                🛑 EMERGENCY STOP
+                🛑 Arkaplani durdur (Terminal 1)
             </button>
 
             <p id="sonuc"></p>
@@ -123,65 +118,26 @@
     </div>
 
     <script>
-    // --- AYARLAR VE KONTROL PANELİ İŞLEMLERİ ---
-    
-    // Toggle
-    let btn = document.getElementById("toggleBtn");
-    let hiddenInput = document.getElementById("toggleValue");
-
-    btn.onclick = function(){
-        if(btn.innerText === "OFF"){
-            btn.innerText = "ON";
-            if(hiddenInput) hiddenInput.value = "ON";
-        }else{
-            btn.innerText = "OFF";
-            if(hiddenInput) hiddenInput.value = "OFF";
-        }
-    }
-
-    // YENİ: OK Butonuna basıldığında çalışacak fonksiyon
-    function ayarlariKaydet() {
-        const pathValue = document.getElementById('pathInput').value;
-        const toggleValue = document.getElementById("toggleBtn").innerText;
-        const sonucAlani = document.getElementById('sonuc');
-
-        if (!pathValue.trim()) {
-            sonucAlani.innerText = "Please enter a file path first!";
-            sonucAlani.style.color = "red";
-            return;
-        }
-
-        sonucAlani.innerText = "Settings are being saved...";
-        sonucAlani.style.color = "black";
-
-        fetch('/ayarlari-kaydet', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                path: pathValue,
-                toggle: toggleValue
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            sonucAlani.innerText = data.mesaj;
-            sonucAlani.style.color = data.durum === "basarili" ? "green" : "red";
-        })
-        .catch(error => {
-            sonucAlani.innerText = "Error occurred while saving settings.";
-            sonucAlani.style.color = "red";
-        });
-    }
+    // --- KONTROL PANELİ İŞLEMLERİ ---
 
     //sabit kumanda kodu
-    function sabitKoduBaslat() {
-        // Backend'deki yeni rotamıza istek atıyoruz
+    function arkaplanKumandaKodu() {
         fetch('/sabit-komut', { method: 'POST' })
         .then(response => response.json())
         .then(data => {
-            // İstersen bildirim mesajını sonuc id'li p etiketine de yazdırabilirsin
+            document.getElementById('sonuc').innerText = data.mesaj;
+            document.getElementById('sonuc').style.color = data.durum === "basarili" ? "green" : "red";
+        })
+        .catch(error => {
+            console.error("Hata oluştu:", error);
+        });
+    }
+
+    // Jetson kodu
+    function jetsonKodu() {
+        fetch('/jetson-kodu', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
             document.getElementById('sonuc').innerText = data.mesaj;
             document.getElementById('sonuc').style.color = data.durum === "basarili" ? "green" : "red";
         })
@@ -191,70 +147,75 @@
     }
 
     // ACİL STOP
-function acilStop() {
-    const sonucAlani = document.getElementById('sonuc');
-    sonucAlani.innerText = "Terminating processes...";
-    sonucAlani.style.color = "red";
-
-    fetch('/acil-stop', { method: 'POST' })
-    .then(response => response.json())
-    .then(data => {
-        sonucAlani.innerText = data.mesaj;
-        sonucAlani.style.color = data.durum === "basarili" ? "green" : "red";
-    })
-    .catch(error => {
-        sonucAlani.innerText = "Error occurred while stopping.";
-        sonucAlani.style.color = "red";
-    });
-}
-
-    // ÇALIŞTIR
-    function scriptiBaslat() {
+    function acilStop() {
         const sonucAlani = document.getElementById('sonuc');
-        sonucAlani.innerText = "Script is starting...";
-        sonucAlani.style.color = "black";
+        sonucAlani.innerText = "Terminating processes...";
+        sonucAlani.style.color = "red";
 
-        // tetikleme yapar
-        fetch('/script-calistir', { method: 'POST' })
+        fetch('/acil-stop', { method: 'POST' })
         .then(response => response.json())
         .then(data => {
             sonucAlani.innerText = data.mesaj;
             sonucAlani.style.color = data.durum === "basarili" ? "green" : "red";
         })
         .catch(error => {
-            sonucAlani.innerText = "Error occurred while starting the script.";
+            sonucAlani.innerText = "Error occurred while stopping.";
             sonucAlani.style.color = "red";
         });
     }
 
-    // --- TERMINAL ---
-    const term = new Terminal({
+    // --- TERMINAL 1 ---
+    const term1 = new Terminal({
         cursorBlink: true,
         theme: { background: '#000000' }
     });
-    term.open(document.getElementById('terminal-container'));
+    term1.open(document.getElementById('terminal-container-1'));
 
+    // --- TERMINAL 2 ---
+    const term2 = new Terminal({
+        cursorBlink: true,
+        theme: { background: '#000000' }
+    });
+    term2.open(document.getElementById('terminal-container-2'));
+
+
+    // Socket Bağlantısı
     const socket = io.connect('http://' + document.domain + ':' + location.port);
 
+    // Terminal 1 Olayları
     socket.on('terminal-cikti', function(data) {
-        term.write(data.output);
+        term1.write(data.output);
     });
-
-    term.onData(function(data) {
+    term1.onData(function(data) {
         socket.emit('terminal-girdi', {input: data});
     });
 
-    term.writeln('');
-term.writeln('██╗  ██╗██╗   ██╗    ██████╗  ██████╗ ██╗   ██╗███████╗██████╗ ');
-term.writeln('██║  ██║██║   ██║    ██╔══██╗██╔═══██╗██║   ██║██╔════╝██╔══██╗');
-term.writeln('███████║██║   ██║    ██████╔╝██║   ██║██║   ██║█████╗  ██████╔╝');
-term.writeln('██╔══██║██║   ██║    ██╔══██╗██║   ██║╚██╗ ██╔╝██╔══╝  ██╔══██╗');
-term.writeln('██║  ██║╚██████╔╝    ██║  ██║╚██████╔╝ ╚████╔╝ ███████╗██║  ██║');
-term.writeln('╚═╝  ╚═╝ ╚═════╝     ╚═╝  ╚═╝ ╚═════╝   ╚═══╝  ╚══════╝╚═╝  ╚═╝');
-term.writeln('');
-term.writeln('🚀 HU ROVER 2026 🚀');
-term.writeln('');
-</script>
+    // Terminal 2 Olayları 
+    socket.on('terminal-cikti-2', function(data) {
+        term2.write(data.output);
+    });
+    term2.onData(function(data) {
+        socket.emit('terminal-girdi-2', {input: data});
+    });
+
+
+    // Karşılama Mesajları
+    term1.writeln('');
+    term1.writeln('██╗  ██╗██╗   ██╗    ██████╗  ██████╗ ██╗   ██╗███████╗██████╗ ');
+    term1.writeln('██║  ██║██║   ██║    ██╔══██╗██╔═══██╗██║   ██║██╔════╝██╔══██╗');
+    term1.writeln('███████║██║   ██║    ██████╔╝██║   ██║██║   ██║█████╗  ██████╔╝');
+    term1.writeln('██╔══██║██║   ██║    ██╔══██╗██║   ██║╚██╗ ██╔╝██╔══╝  ██╔══██╗');
+    term1.writeln('██║  ██║╚██████╔╝    ██║  ██║╚██████╔╝ ╚████╔╝ ███████╗██║  ██║');
+    term1.writeln('╚═╝  ╚═╝ ╚═════╝     ╚═╝  ╚═╝ ╚═════╝   ╚═══╝  ╚══════╝╚═╝  ╚═╝');
+    term1.writeln('');
+    term1.writeln('🚀 HU ROVER 2026 - TERMINAL 1 🚀');
+    term1.writeln('');
+
+    term2.writeln('');
+    term2.writeln('🚀 HU ROVER 2026 - TERMINAL 2 🚀');
+    term2.writeln('İkinci işlem kanalı dinleniyor...');
+    term2.writeln('');
+    </script>
 
 </body>
 </html>
