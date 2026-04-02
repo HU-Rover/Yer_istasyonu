@@ -26,7 +26,7 @@
             justify-content: space-between;
             align-items: flex-start;
             gap: 20px;
-            max-width: 1200px;
+            max-width: 1600px;
             margin: 0 auto;
         }
 
@@ -49,13 +49,13 @@
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            text-align: center;
+            text-align: left;
         }
 
         /* Terminal Kutusu Tasarımı (Ortak Class) */
         .terminal-kutu {
             width: 100%;
-            height: 500px;
+            height: 500px; /* Ekrana daha rahat sığması için 300px tutuldu */
             border: 2px solid #333;
             padding: 10px;
             background-color: #000;
@@ -80,6 +80,48 @@
         .btn:hover { background-color: #0056b3; }
         
         #sonuc { font-weight: bold; margin-top: 15px; min-height: 20px;}
+
+        /* Kontroller (butonlar) */
+        .controls {
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            text-align: left;
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.02);
+        }
+
+        /* Kamera Kutusu Tasarımı */
+        #kamera-container {
+            width: 100%;
+            background-color: #222;
+            border: 2px solid #333;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            text-align: center;
+            height: 100%;
+            min-height: 320px;
+        }
+
+        #kamera-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .kamera-baslik {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: #00ff00;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -97,22 +139,37 @@
         </div>
 
         <div class="sag-panel">
-            <h2>⚙️ Control Panel</h2>
-            <br>
+            <h2>📷 Canlı Kamera Akışı (RTSP)</h2>
             
-            <button class="btn" onclick="arkaplanKumandaKodu()" style="background-color: #28a745;">
-                ⚙️ Kumanda Kodu Arkaplan (Terminal 1)
-            </button>
+            <div id="kamera-container" style="width: 100%; background-color: #000; border-radius: 8px; margin-bottom: 20px; overflow: hidden; position: relative;">
+                <div style="position: absolute; top: 10px; left: 10px; background-color: rgba(0,0,0,0.7); color: #00ff00; padding: 5px 10px; border-radius: 4px; font-weight: bold; z-index: 10;">
+                    🔴 REC | RTSP Yayını
+                </div>
+                
+                <img src="/kamera-yayini" style="width: 100%; max-height: 480px; display: block; object-fit: cover;" alt="RTSP Bağlantısı Bekleniyor...">
+            </div>
+            
+            <div class="controls" style="margin-top:15px;">
+                <h2>⚙️ Control Panel</h2>
+                <br>
+                <button class="btn" onclick="arkaplanKumandaKodu()" style="background-color: #28a745;">
+                    ⚙️ Kumanda Kodu Arkaplan (Terminal 1)
+                </button>
 
-            <button class="btn" onclick="jetsonKodu()" style="background-color: #1d7c32; font-weight: bold; border: 2px solid darkred;">
-                ⚙️ Jetson kodu (Terminal 2)
-            </button>
+                <button class="btn" onclick="jetsonKodu()" style="background-color: #1d7c32; font-weight: bold; border: 2px solid darkred;">
+                    ⚙️ Jetson kodu (Terminal 2)
+                </button>
 
-            <button class="btn" onclick="acilStop()" style="background-color: #dc3545; font-weight: bold; border: 2px solid darkred;">
-                🛑 Arkaplani durdur (Terminal 1)
-            </button>
+                <button class="btn" onclick="acilStop()" style="background-color: #dc3545; font-weight: bold; border: 2px solid darkred;">
+                    🛑 Arkaplani durdur (Terminal 1)
+                </button>
 
-            <p id="sonuc"></p>
+                <button class="btn" onclick="sshKameraBaslat()" style="background-color: #007bff; font-weight: bold; border: 2px solid #0056b3;">
+                📷 Kamerayı Başlat (Önce Terminal 2'den Jetson'a Bağlanilmali)
+                </button>
+
+                <p id="sonuc"></p>
+            </div>
         </div>
 
     </div>
@@ -198,6 +255,28 @@
         socket.emit('terminal-girdi-2', {input: data});
     });
 
+    // Arayüzdeki terminalden kamerayı arka planda başlatır
+    function sshKameraBaslat() {
+        const onay = confirm("LÜTFEN DİKKAT!\nTerminal 2 üzerinden Jetson'a (SSH ile) bağlandığınızdan emin misiniz?");
+        
+        if (onay) {
+            const sonucAlani = document.getElementById('sonuc');
+            sonucAlani.innerText = "Kamera komutları Terminal 2'ye gönderiliyor...";
+            sonucAlani.style.color = "black";
+
+            fetch('/ssh-kamera-baslat', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                sonucAlani.innerText = data.mesaj;
+                sonucAlani.style.color = data.durum === "basarili" ? "green" : "red";
+            })
+            .catch(error => {
+                sonucAlani.innerText = "Hata oluştu!";
+                sonucAlani.style.color = "red";
+            });
+        }
+    }
+
 
     // Karşılama Mesajları
     term1.writeln('');
@@ -208,12 +287,12 @@
     term1.writeln('██║  ██║╚██████╔╝    ██║  ██║╚██████╔╝ ╚████╔╝ ███████╗██║  ██║');
     term1.writeln('╚═╝  ╚═╝ ╚═════╝     ╚═╝  ╚═╝ ╚═════╝   ╚═══╝  ╚══════╝╚═╝  ╚═╝');
     term1.writeln('');
-    term1.writeln('🚀 HU ROVER 2026 - TERMINAL 1 🚀');
+    term1.writeln('🚀 HU ROVER 2026 - TERMINAL 1 \n\r');
     term1.writeln('');
 
     term2.writeln('');
     term2.writeln('🚀 HU ROVER 2026 - TERMINAL 2 🚀');
-    term2.writeln('İkinci işlem kanalı dinleniyor...');
+    term2.writeln('İkinci işlem kanalı dinleniyor... \n\r');
     term2.writeln('');
     </script>
 
