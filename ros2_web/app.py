@@ -98,9 +98,9 @@ def acil_stop():
     except Exception as e:
         return jsonify({"durum": "hata", "mesaj": str(e)}), 500
 
-#sabit komut (uzaktan kumanda) -> YUKARIDAKİ (1.) TERMİNALDE ÇALIŞIR
-@app.route('/sabit-komut', methods=['POST'])
-def sabit_komut_calistir():
+#kumanda komut (uzaktan kumanda) -> YUKARIDAKİ (1.) TERMİNALDE ÇALIŞIR
+@app.route('/kumanda-komut', methods=['POST'])
+def kumanda_komut_calistir():
     global fd1
     try:
         if fd1:
@@ -133,47 +133,7 @@ def jetson_kodu():
 def index():
     return render_template("index.html")
 
-# 1. AŞAMA: OK Butonuna basma
-@app.route('/ayarlari-kaydet', methods=['POST'])
-def save_settings():
-    global kayitli_path, kayitli_toggle
-    
-    data = request.get_json()
-    kayitli_path = data.get("path", "")
-    kayitli_toggle = data.get("toggle", "OFF").upper()
-    
-    return jsonify({"durum": "basarili", "mesaj": f"Settings saved! (Toggle: {kayitli_toggle})"})
 
-# 2. AŞAMA: Çalıştır Butonuna basma -> AŞAĞIDAKİ (2.) TERMİNALDE ÇALIŞIR
-@app.route('/script-calistir', methods=['POST'])
-def run_script():
-    global fd2, kayitli_path, kayitli_toggle
-    
-    try:
-        if not kayitli_path:
-            return jsonify({"durum": "hata", "mesaj": "First save a file path!"}), 400
-        
-        final_path = "/".join(kayitli_path.split("/")[:-1])
-        file_name = kayitli_path.split("/")[-1]
-
-        if kayitli_toggle == "OFF":
-            komut = ['gnome-terminal', '--', 'bash', '-c', f'cd {final_path} && python3 {file_name}; exec bash']
-            subprocess.Popen(komut, cwd=final_path)
-            mesaj = "Script has started on a new GNOME terminal"
-            
-        else:
-            # Web arayüzündeki İKİNCİ terminalde aç
-            if fd2 is None:
-                return jsonify({"durum": "hata", "mesaj": "Web terminal 2 is not initialized!"}), 400
-            
-            komut_str = f"echo '\n🚀 [{file_name}] arka planda baslatildi...' && cd {final_path} && nohup ./{file_name} > /dev/null 2>&1 &\r\n"
-            os.write(fd2, komut_str.encode('utf-8'))
-            mesaj = "Script has started silently in the background (Terminal 2)"
-            
-        return jsonify({"durum": "basarili", "mesaj": mesaj})
-        
-    except Exception as e:
-        return jsonify({"durum": "hata", "mesaj": str(e)}), 500
 
 # --- WEBSOCKET ROTALARI (PTY BAŞLATMA) ---
 @socketio.on('connect')
