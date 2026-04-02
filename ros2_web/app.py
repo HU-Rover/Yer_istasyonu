@@ -12,17 +12,21 @@ KULLANIM:
 
 """
 
+import threading
+import time
 import os
 import pty
 import subprocess
 import select
 from flask import Flask, render_template, jsonify, request
 from flask_socketio import SocketIO
+import cv2
+from flask import Response
 
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-# --- TERMINAL İÇİN GLOBAL DEĞİŞKENLER ---
+# --- TERMINAL İÇİN GLOBAL DEĞİŞKENLER (2 ADET) ---
 fd1 = None
 child_pid1 = None
 
@@ -75,7 +79,7 @@ def acil_stop():
             if kayitli_path:
                 file_name = os.path.basename(kayitli_path)
             
-            kill_cmd = "pkill -f 'ros2 run' ; pkill -f 'uzaktan_kumanda'"
+            kill_cmd = "pkill -f 'ros2 run' ; pkill -f 'uzaktan_kumanda' ; pkill -f 'ffmpeg' ; pkill -f 'mediamtx'"
             if file_name:
                 kill_cmd += f" ; pkill -f '{file_name}'"
             
@@ -83,7 +87,10 @@ def acil_stop():
             
             # Acil stop komutunu 1. terminalde çalıştır
             os.write(fd1, komut.encode('utf-8'))
-        
+            os.write(fd2, komut.encode('utf-8'))
+            
+            
+            
             return jsonify({"durum": "basarili", "mesaj": "Tüm arka plan işlemleri durduruldu!"})
         else:
             return jsonify({"durum": "hata", "mesaj": "Terminal henüz hazır değil."}), 500
@@ -91,7 +98,7 @@ def acil_stop():
     except Exception as e:
         return jsonify({"durum": "hata", "mesaj": str(e)}), 500
 
-#sabit komut (uzaktan kumanda) -> (1.) TERMİNALDE ÇALIŞIR
+#sabit komut (uzaktan kumanda) -> YUKARIDAKİ (1.) TERMİNALDE ÇALIŞIR
 @app.route('/sabit-komut', methods=['POST'])
 def sabit_komut_calistir():
     global fd1
@@ -106,8 +113,7 @@ def sabit_komut_calistir():
             
     except Exception as e:
         return jsonify({"durum": "hata", "mesaj": str(e)}), 500
-
-#jetson kodu -> (2.) TERMINALDE CALISIR
+    
 @app.route('/jetson-kodu', methods=['POST'])
 def jetson_kodu():
     global fd2
@@ -126,6 +132,48 @@ def jetson_kodu():
 @app.route('/', methods=['GET'])
 def index():
     return render_template("index.html")
+
+# 1. AŞAMA: OK Butonuna basma
+@app.route('/ayarlari-kaydet', methods=['POST'])
+def save_settings():
+    global kayitli_path, kayitli_toggle
+    
+    data = request.get_json()
+    kayitli_path = data.get("path", "")
+    kayitli_toggle = data.get("toggle", "OFF").upper()
+    
+    return jsonify({"durum": "basarili", "mesaj": f"Settings saved! (Toggle: {kayitli_toggle})"})
+
+# 2. AŞAMA: Çalıştır Butonuna basma -> AŞAĞIDAKİ (2.) TERMİNALDE ÇALIŞIR
+@app.route('/script-calistir', methods=['POST'])
+def run_script():
+    global fd2, kayitli_path, kayitli_toggle
+    
+    try:
+        if not kayitli_path:
+            return jsonify({"durum": "hata", "mesaj": "First save a file path!"}), 400
+        
+        final_path = "/".join(kayitli_path.split("/")[:-1])
+        file_name = kayitli_path.split("/")[-1]
+
+        if kayitli_toggle == "OFF":
+            komut = ['gnome-terminal', '--', 'bash', '-c', f'cd {final_path} && python3 {file_name}; exec bash']
+            subprocess.Popen(komut, cwd=final_path)
+            mesaj = "Script has started on a new GNOME terminal"
+            
+        else:
+            # Web arayüzündeki İKİNCİ terminalde aç
+            if fd2 is None:
+                return jsonify({"durum": "hata", "mesaj": "Web terminal 2 is not initialized!"}), 400
+            
+            komut_str = f"echo '\n🚀 [{file_name}] arka planda baslatildi...' && cd {final_path} && nohup ./{file_name} > /dev/null 2>&1 &\r\n"
+            os.write(fd2, komut_str.encode('utf-8'))
+            mesaj = "Script has started silently in the background (Terminal 2)"
+            
+        return jsonify({"durum": "basarili", "mesaj": mesaj})
+        
+    except Exception as e:
+        return jsonify({"durum": "hata", "mesaj": str(e)}), 500
 
 # --- WEBSOCKET ROTALARI (PTY BAŞLATMA) ---
 @socketio.on('connect')
@@ -163,6 +211,102 @@ def terminal_girdi_2(data):
     global fd2
     if fd2:
         os.write(fd2, data['input'].encode('utf-8'))
+
+
+
+
+
+# --- KAMERA YAYINI İÇİN GLOBAL DEĞİŞKENLER ---
+guncel_kare = None
+kamera_kilidi = threading.Lock()
+
+def kamerayi_arkaplanda_oku():
+    global guncel_kare
+    rtsp_url = "rtsp://192.168.88.20:8554/realsense"
+    
+    import os
+    os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp"
+    
+    # Bağlantı kurmaya çalışır
+    while True:
+        cap = cv2.VideoCapture(rtsp_url, cv2.CAP_FFMPEG)
+        
+        # Eğer Jetson'da ffmpeg henüz başlatılmadıysa
+        if not cap.isOpened():
+            time.sleep(2)
+            continue
+            
+        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+
+        # Bağlantı kurulduğunda kareleri okur
+        while True:
+            success, frame = cap.read()
+            if success:
+                ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
+                if ret:
+                    with kamera_kilidi:
+                        guncel_kare = buffer.tobytes()
+            else:
+                break
+            
+            time.sleep(0.01)
+        
+        cap.release()
+        time.sleep(1)
+
+threading.Thread(target=kamerayi_arkaplanda_oku, daemon=True).start()
+
+# --- WEB ARAYÜZÜNE YAYIN GÖNDERME ---
+def kamera_karelerini_al():
+    global guncel_kare
+    while True:
+        kare = None
+        with kamera_kilidi:
+            if guncel_kare is not None:
+                kare = guncel_kare
+        
+        if kare:
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + kare + b'\r\n')
+        
+        socketio.sleep(0.03) 
+
+@app.route('/kamera-yayini')
+def video_feed():
+    return Response(kamera_karelerini_al(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+
+# --- KAMERAYI BAŞLAT (AÇIK OLAN SSH ÜZERİNDEN) ---
+@app.route('/ssh-kamera-baslat', methods=['POST'])
+def ssh_kamera_baslat():
+    global fd2 #2. terminalde calistir
+    try:
+        if fd2:
+            # 1. Mediamtx'i arka planda başlat (çıktıları çöpe at)
+            # 2. 2 saniye bekle 
+            # 3. ffmpeg komutunu arka planda başlat
+            komut = (
+                "echo '\n🚀 MediaMTX ve Kamera arka planda baslatiliyor...'\r\n"
+                "nohup ./mediamtx > /dev/null 2>&1 &\r\n"
+                "sleep 2\r\n"
+                "nohup ffmpeg -f v4l2 -input_format yuyv422 -video_size 640x480 -framerate 15 "
+                "-thread_queue_size 512 -i /dev/video4 -vf format=yuv420p -c:v libx264 "
+                "-preset ultrafast -tune zerolatency -b:v 1M -bufsize 500k -g 15 -keyint_min 15 "
+                "-sc_threshold 0 -fflags nobuffer -flags low_delay -avioflags direct "
+                "-flush_packets 1 -max_delay 0 -f rtsp -rtsp_transport tcp "
+                "rtsp://localhost:8554/realsense > /dev/null 2>&1 &\r\n"
+                "echo '✅ Yayin basladi! Terminali kullanmaya devam edebilirsiniz.'\r\n"
+            )
+            
+            os.write(fd2, komut.encode('utf-8'))
+            return jsonify({"durum": "basarili", "mesaj": "Kamera komutları Terminal 2'ye yazdırıldı!"})
+        else:
+            return jsonify({"durum": "hata", "mesaj": "Terminal 2 henüz hazır değil."}), 500
+            
+    except Exception as e:
+        return jsonify({"durum": "hata", "mesaj": str(e)}), 500
+
+
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True, allow_unsafe_werkzeug=True)
