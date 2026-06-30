@@ -79,7 +79,7 @@ def acil_stop():
             if kayitli_path:
                 file_name = os.path.basename(kayitli_path)
             
-            kill_cmd = "pkill -f 'ros2 run' ; pkill -f 'uzaktan_kumanda' ; pkill -f 'ffmpeg' ; pkill -f 'mediamtx'"
+            kill_cmd = "pkill -f 'ros2 run' ; pkill -f 'uzaktan_kumanda' ; pkill -f 'ffmpeg' ; pkill -f 'mediamtx' ; pkill -f 'gst-launch-1.0'"
             if file_name:
                 kill_cmd += f" ; pkill -f '{file_name}'"
             
@@ -136,9 +136,16 @@ def index():
 
 
 # --- WEBSOCKET ROTALARI (PTY BAŞLATMA) ---
+sensor_bg_task_started = False
+
 @socketio.on('connect')
 def baglanti_kuruldu():
-    global fd1, child_pid1, fd2, child_pid2
+    global fd1, child_pid1, fd2, child_pid2, sensor_bg_task_started
+    
+    if not sensor_bg_task_started:
+        sensor_bg_task_started = True
+        socketio.start_background_task(target=sensor_verisi_gonder_loop)
+
     
     # 1. Terminal PTY
     if child_pid1 is None:
@@ -173,100 +180,158 @@ def terminal_girdi_2(data):
         os.write(fd2, data['input'].encode('utf-8'))
 
 
-
-
-
-# --- KAMERA YAYINI İÇİN GLOBAL DEĞİŞKENLER ---
-guncel_kare = None
-kamera_kilidi = threading.Lock()
-
-def kamerayi_arkaplanda_oku():
-    global guncel_kare
-    rtsp_url = "rtsp://192.168.88.20:8554/realsense"
+# --- 7'Lİ KAMERA YAYINI ALTYAPISI ---
+kameralar = {
+    # Gövde Kameraları
+    "on":    {"url": "rtsp://192.168.88.20:8554/kamera_on",    "kare": None, "kilit": threading.Lock()},
+    "sag":   {"url": "rtsp://192.168.88.20:8554/kamera_sag",   "kare": None, "kilit": threading.Lock()},
+    "sol":   {"url": "rtsp://192.168.88.20:8554/kamera_sol",   "kare": None, "kilit": threading.Lock()},
     
+    # Robot Kol Kameraları
+    "kol_1": {"url": "rtsp://192.168.88.20:8554/kol_kamera_1", "kare": None, "kilit": threading.Lock()},
+    "kol_2": {"url": "rtsp://192.168.88.20:8554/kol_kamera_2", "kare": None, "kilit": threading.Lock()},
+    "kol_3": {"url": "rtsp://192.168.88.20:8554/kol_kamera_3", "kare": None, "kilit": threading.Lock()},
+    "kol_4": {"url": "rtsp://192.168.88.20:8554/kol_kamera_4", "kare": None, "kilit": threading.Lock()},
+}
+
+def tek_kamera_oku(kamera_id):
     import os
     os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp"
     
-    # Bağlantı kurmaya çalışır
+    cfg = kameralar[kamera_id]
     while True:
-        cap = cv2.VideoCapture(rtsp_url, cv2.CAP_FFMPEG)
-        
-        # Eğer Jetson'da ffmpeg henüz başlatılmadıysa
+        cap = cv2.VideoCapture(cfg["url"], cv2.CAP_FFMPEG)
         if not cap.isOpened():
             time.sleep(2)
             continue
             
         cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
-        # Bağlantı kurulduğunda kareleri okur
         while True:
             success, frame = cap.read()
             if success:
-                ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
+                ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 75]) # Bant genişliği için kaliteyi 75 yaptık
                 if ret:
-                    with kamera_kilidi:
-                        guncel_kare = buffer.tobytes()
+                    with cfg["kilit"]:
+                        cfg["kare"] = buffer.tobytes()
             else:
                 break
-            
             time.sleep(0.01)
         
         cap.release()
         time.sleep(1)
 
-threading.Thread(target=kamerayi_arkaplanda_oku, daemon=True).start()
+# Her kamera için ayrı bir arka plan okuma thread'i başlatıyoruz
+for k_id in kameralar.keys():
+    threading.Thread(target=tek_kamera_oku, args=(k_id,), daemon=True).start()
 
-# --- WEB ARAYÜZÜNE YAYIN GÖNDERME ---
-def kamera_karelerini_al():
-    global guncel_kare
+# --- WEB ARAYÜZÜNE ÇOKLU YAYIN GÖNDERME ---
+def kamera_karelerini_al(kamera_id):
+    cfg = kameralar[kamera_id]
     while True:
         kare = None
-        with kamera_kilidi:
-            if guncel_kare is not None:
-                kare = guncel_kare
+        with cfg["kilit"]:
+            if cfg["kare"] is not None:
+                kare = cfg["kare"]
         
         if kare:
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + kare + b'\r\n')
-        
-        socketio.sleep(0.03) 
+        socketio.sleep(0.03)
 
-@app.route('/kamera-yayini')
-def video_feed():
-    return Response(kamera_karelerini_al(), mimetype='multipart/x-mixed-replace; boundary=frame')
+# Rotaları dinamik hale getiriyoruz
+@app.route('/kamera-yayini/<kamera_id>')
+def video_feed(kamera_id):
+    if kamera_id in kameralar:
+        return Response(kamera_karelerini_al(kamera_id), mimetype='multipart/x-mixed-replace; boundary=frame')
+    return "Kamera bulunamadi", 404
 
 
 # --- KAMERAYI BAŞLAT (AÇIK OLAN SSH ÜZERİNDEN) ---
 @app.route('/ssh-kamera-baslat', methods=['POST'])
 def ssh_kamera_baslat():
-    global fd2 #2. terminalde calistir
+    global fd2
     try:
         if fd2:
-            # 1. Mediamtx'i arka planda başlat (çıktıları çöpe at)
-            # 2. 2 saniye bekle 
-            # 3. ffmpeg komutunu arka planda başlat
             komut = (
-                "echo '\n🚀 MediaMTX ve Kamera arka planda baslatiliyor...'\r\n"
+                "echo '\n🚀 MediaMTX ve Çoklu GStreamer Yayını (7 Kamera) başlatılıyor...'\r\n"
                 "nohup ./mediamtx > /dev/null 2>&1 &\r\n"
                 "sleep 2\r\n"
-                "nohup ffmpeg -f v4l2 -input_format yuyv422 -video_size 640x480 -framerate 15 "
-                "-thread_queue_size 512 -i /dev/video4 -vf format=yuv420p -c:v libx264 "
-                "-preset ultrafast -tune zerolatency -b:v 1M -bufsize 500k -g 15 -keyint_min 15 "
-                "-sc_threshold 0 -fflags nobuffer -flags low_delay -avioflags direct "
-                "-flush_packets 1 -max_delay 0 -f rtsp -rtsp_transport tcp "
-                "rtsp://localhost:8554/realsense > /dev/null 2>&1 &\r\n"
-                "echo '✅ Yayin basladi! Terminali kullanmaya devam edebilirsiniz.'\r\n"
+                
+                # --- GÖVDE (SÜRÜŞ) KAMERALARI ---
+                "nohup gst-launch-1.0 v4l2src device=/dev/video0 ! video/x-raw,width=640,height=480,framerate=30/1 ! videoconvert ! x264enc tune=zerolatency bitrate=600 speed-preset=ultrafast ! rtspclientsink location=rtsp://localhost:8554/kamera_on > /dev/null 2>&1 &\r\n"
+                "nohup gst-launch-1.0 v4l2src device=/dev/video1 ! video/x-raw,width=640,height=480,framerate=30/1 ! videoconvert ! x264enc tune=zerolatency bitrate=600 speed-preset=ultrafast ! rtspclientsink location=rtsp://localhost:8554/kamera_sag > /dev/null 2>&1 &\r\n"
+                "nohup gst-launch-1.0 v4l2src device=/dev/video2 ! video/x-raw,width=640,height=480,framerate=30/1 ! videoconvert ! x264enc tune=zerolatency bitrate=600 speed-preset=ultrafast ! rtspclientsink location=rtsp://localhost:8554/kamera_sol > /dev/null 2>&1 &\r\n"
+                
+                # --- ROBOT KOL KAMERALARI ---
+                "nohup gst-launch-1.0 v4l2src device=/dev/video3 ! video/x-raw,width=640,height=480,framerate=30/1 ! videoconvert ! x264enc tune=zerolatency bitrate=600 speed-preset=ultrafast ! rtspclientsink location=rtsp://localhost:8554/kol_kamera_1 > /dev/null 2>&1 &\r\n"
+                "nohup gst-launch-1.0 v4l2src device=/dev/video4 ! video/x-raw,width=640,height=480,framerate=30/1 ! videoconvert ! x264enc tune=zerolatency bitrate=600 speed-preset=ultrafast ! rtspclientsink location=rtsp://localhost:8554/kol_kamera_2 > /dev/null 2>&1 &\r\n"
+                "nohup gst-launch-1.0 v4l2src device=/dev/video5 ! video/x-raw,width=640,height=480,framerate=30/1 ! videoconvert ! x264enc tune=zerolatency bitrate=600 speed-preset=ultrafast ! rtspclientsink location=rtsp://localhost:8554/kol_kamera_3 > /dev/null 2>&1 &\r\n"
+                "nohup gst-launch-1.0 v4l2src device=/dev/video6 ! video/x-raw,width=640,height=480,framerate=30/1 ! videoconvert ! x264enc tune=zerolatency bitrate=600 speed-preset=ultrafast ! rtspclientsink location=rtsp://localhost:8554/kol_kamera_4 > /dev/null 2>&1 &\r\n"
+                
+                "echo '✅ 3 Gövde ve 4 Robot Kol yayını başarıyla başlatıldı!'\r\n"
             )
-            
             os.write(fd2, komut.encode('utf-8'))
-            return jsonify({"durum": "basarili", "mesaj": "Kamera komutları Terminal 2'ye yazdırıldı!"})
+            return jsonify({"durum": "basarili", "mesaj": "7 adet kamera komutu Jetson terminaline yazdırıldı!"})
         else:
-            return jsonify({"durum": "hata", "mesaj": "Terminal 2 henüz hazır değil."}), 500
-            
+            return jsonify({"durum": "hata", "mesaj": "Terminal 2 hazır değil."}), 500
     except Exception as e:
         return jsonify({"durum": "hata", "mesaj": str(e)}), 500
 
 
+
+# --- ROS 2 SENSÖR VERİSİ DİNLEYİCİSİ ---
+import rclpy
+from rclpy.node import Node
+from std_msgs.msg import String
+import json
+
+# Thread'ler arası güvenli veri aktarımı için global değişken
+guncel_sensor_verisi = None
+
+class WebSensorSubscriber(Node):
+    def __init__(self):
+        super().__init__('web_sensor_subscriber')
+        self.subscription = self.create_subscription(
+            String,
+            '/sensor_verisi',
+            self.listener_callback,
+            10)
+
+    def listener_callback(self, msg):
+        global guncel_sensor_verisi
+        try:
+            data = json.loads(msg.data)
+            guncel_sensor_verisi = data
+        except json.JSONDecodeError:
+            pass
+
+def ros2_thread():
+    try:
+        rclpy.init(args=None)
+        sensor_subscriber = WebSensorSubscriber()
+        rclpy.spin(sensor_subscriber)
+        sensor_subscriber.destroy_node()
+        rclpy.shutdown()
+    except Exception as e:
+        print(f"ROS 2 dinleyici baslatilamadi: {e}")
+
+# ROS 2 node'unu her durumda sorunsuz çalışması için native thread ile başlatıyoruz
+threading.Thread(target=ros2_thread, daemon=True).start()
+
+# Arayüze veri yollama işlemini Flask-SocketIO'nun kendi güvenli thread yapısına bırakıyoruz
+def sensor_verisi_gonder_loop():
+    global guncel_sensor_verisi
+    while True:
+        socketio.sleep(0.5)
+        if guncel_sensor_verisi:
+            # Gelen veriyi web arayüzüne gönderiyoruz
+            socketio.emit('sensor_verisi', {
+                'sicaklik': guncel_sensor_verisi.get('sicaklik', '--'),
+                'basinc': guncel_sensor_verisi.get('basinc', '--'),
+                'mesafe': guncel_sensor_verisi.get('mesafe', '--')
+            })
+            guncel_sensor_verisi = None
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True, allow_unsafe_werkzeug=True)
