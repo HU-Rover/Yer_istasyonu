@@ -122,15 +122,92 @@
             font-size: 14px;
             font-weight: bold;
         }
+
+        /* Tab Ayarları */
+        .tab-container {
+            margin-bottom: 20px;
+            background-color: #fff;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            max-width: 1600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .tab-button {
+            padding: 12px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #e9ecef;
+            color: #333;
+            border: none;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            flex: 1;
+        }
+        .tab-button:hover {
+            background-color: #d3d9df;
+        }
+        .tab-button.active {
+            background-color: #007bff;
+            color: white;
+        }
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Sensor Data Styles */
+        .sensor-card {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            margin-bottom: 15px;
+            width: 200px;
+            text-align: center;
+            border: 1px solid #ddd;
+        }
+        .sensor-card h3 {
+            margin-top: 0;
+            color: #555;
+            font-size: 18px;
+        }
+        .sensor-card .value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #007bff;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
 
     <h1>ROS 2 Interface</h1>
 
-    <div class="ana-konteyner">
-        
-        <div class="sol-panel">
+    <div class="tab-container">
+        <button class="tab-button active" onclick="openTab(event, 'Terminaller')">💻 Terminaller</button>
+        <button class="tab-button" onclick="openTab(event, 'GovdeKameralari')">📷 Gövdedeki Kameralar</button>
+        <button class="tab-button" onclick="openTab(event, 'KolKameralari')">🦾 Robot Koldaki Kameralar</button>
+        <button class="tab-button" onclick="openTab(event, 'Sensorler')">📡 Sensörler</button>
+    </div>
+
+    <!-- Terminaller Sekmesi -->
+    <div id="Terminaller" class="tab-content active">
+        <div class="ana-konteyner">
+            
+            <div class="sol-panel">
             <h2>💻 Ubuntu Terminal 1</h2>
             <div id="terminal-container-1" class="terminal-kutu"></div>
             
@@ -139,17 +216,7 @@
         </div>
 
         <div class="sag-panel">
-            <h2>📷 Canlı Kamera Akışı (RTSP)</h2>
-            
-            <div id="kamera-container" style="width: 100%; background-color: #000; border-radius: 8px; margin-bottom: 20px; overflow: hidden; position: relative;">
-                <div style="position: absolute; top: 10px; left: 10px; background-color: rgba(0,0,0,0.7); color: #00ff00; padding: 5px 10px; border-radius: 4px; font-weight: bold; z-index: 10;">
-                    🔴 REC | RTSP Yayını
-                </div>
-                
-                <img src="/kamera-yayini" style="width: 100%; max-height: 480px; display: block; object-fit: cover;" alt="RTSP Bağlantısı Bekleniyor...">
-            </div>
-            
-            <div class="controls" style="margin-top:15px;">
+            <div class="controls" style="margin-top:0px;">
                 <h2>⚙️ Control Panel</h2>
                 <br>
                 <button class="btn" onclick="arkaplanKumandaKodu()" style="background-color: #28a745;">
@@ -172,14 +239,127 @@
             </div>
         </div>
 
+        </div>
+    </div>
+
+    <!-- Gövdedeki Kameralar Sekmesi -->
+    <div id="GovdeKameralari" class="tab-content">
+        <div class="ana-konteyner" style="max-width:1600px; flex-direction: column; gap: 20px;">
+            <h2>📷 Gövde Canlı Kamera Akışları (GStreamer)</h2>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; width: 100%;">
+                
+                <div class="sol-panel" style="padding: 10px;">
+                    <h3 style="margin: 5px 0;">🟢 Ön Kamera</h3>
+                    <div style="background-color: #000; border-radius: 8px; overflow: hidden;">
+                        <img src="/kamera-yayini/on" style="width: 100%; height: auto; display: block;" alt="Ön Kamera Bağlantısı Bekleniyor...">
+                    </div>
+                </div>
+
+                <div class="sol-panel" style="padding: 10px;">
+                    <h3 style="margin: 5px 0;">🟡 Sağ Kamera</h3>
+                    <div style="background-color: #000; border-radius: 8px; overflow: hidden;">
+                        <img src="/kamera-yayini/sag" style="width: 100%; height: auto; display: block;" alt="Sağ Kamera Bağlantısı Bekleniyor...">
+                    </div>
+                </div>
+
+                <div class="sol-panel" style="padding: 10px;">
+                    <h3 style="margin: 5px 0;">🔵 Sol Kamera</h3>
+                    <div style="background-color: #000; border-radius: 8px; overflow: hidden;">
+                        <img src="/kamera-yayini/sol" style="width: 100%; height: auto; display: block;" alt="Sol Kamera Bağlantısı Bekleniyor...">
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Robot Koldaki Kameralar Sekmesi -->
+    <div id="KolKameralari" class="tab-content">
+        <div class="ana-konteyner" style="max-width:1600px; flex-direction: column; gap: 20px;">
+            <h2>🦾 Robot Kol Canlı Kamera Akışları (2x2 Matris)</h2>
+            
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; width: 100%;">
+                
+                <div class="sol-panel" style="padding: 10px;">
+                    <h3 style="margin: 5px 0;">🦾 Kamera 1 (Ana Eklem)</h3>
+                    <div style="background-color: #000; border-radius: 8px; overflow: hidden;">
+                        <img src="/kamera-yayini/kol_1" style="width: 100%; height: auto; display: block;" alt="Kol Kamera 1 Bekleniyor...">
+                    </div>
+                </div>
+
+                <div class="sol-panel" style="padding: 10px;">
+                    <h3 style="margin: 5px 0;">🦾 Kamera 2 (Bilek)</h3>
+                    <div style="background-color: #000; border-radius: 8px; overflow: hidden;">
+                        <img src="/kamera-yayini/kol_2" style="width: 100%; height: auto; display: block;" alt="Kol Kamera 2 Bekleniyor...">
+                    </div>
+                </div>
+
+                <div class="sol-panel" style="padding: 10px;">
+                    <h3 style="margin: 5px 0;">🦾 Kamera 3 (Kıskaç Üst Açısı)</h3>
+                    <div style="background-color: #000; border-radius: 8px; overflow: hidden;">
+                        <img src="/kamera-yayini/kol_3" style="width: 100%; height: auto; display: block;" alt="Kol Kamera 3 Bekleniyor...">
+                    </div>
+                </div>
+
+                <div class="sol-panel" style="padding: 10px;">
+                    <h3 style="margin: 5px 0;">🦾 Kamera 4 (Kıskaç Detay)</h3>
+                    <div style="background-color: #000; border-radius: 8px; overflow: hidden;">
+                        <img src="/kamera-yayini/kol_4" style="width: 100%; height: auto; display: block;" alt="Kol Kamera 4 Bekleniyor...">
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Sensörler Sekmesi -->
+    <div id="Sensorler" class="tab-content">
+        <div class="ana-konteyner">
+            <div class="sol-panel" style="flex: 1;">
+                <h2>📡 Sensör Verileri (Demo ROS Topics)</h2>
+                <p style="color: #666; margin-bottom: 20px; font-size: 16px;">Bu veriler arka planda rastgele oluşturulmuş ROS topic simülasyonlarıdır.</p>
+                <div style="display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 20px;">
+                    <div class="sensor-card">
+                        <h3>Sıcaklık</h3>
+                        <div class="value" id="sensor-sicaklik">-- °C</div>
+                    </div>
+                    <div class="sensor-card">
+                        <h3>Basınç</h3>
+                        <div class="value" id="sensor-basinc">-- hPa</div>
+                    </div>
+                    <div class="sensor-card">
+                        <h3>Mesafe</h3>
+                        <div class="value" id="sensor-mesafe">-- cm</div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
+    // --- SEKME KONTROLÜ ---
+    function openTab(evt, tabName) {
+        var i, tabcontent, tablinks;
+        tabcontent = document.getElementsByClassName("tab-content");
+        for (i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].style.display = "none";
+            tabcontent[i].classList.remove("active");
+        }
+        tablinks = document.getElementsByClassName("tab-button");
+        for (i = 0; i < tablinks.length; i++) {
+            tablinks[i].className = tablinks[i].className.replace(" active", "");
+        }
+        document.getElementById(tabName).style.display = "block";
+        document.getElementById(tabName).classList.add("active");
+        evt.currentTarget.className += " active";
+    }
+
     // --- KONTROL PANELİ İŞLEMLERİ ---
 
     //sabit kumanda kodu
     function arkaplanKumandaKodu() {
-        fetch('/sabit-komut', { method: 'POST' })
+        fetch('/kumanda-komut', { method: 'POST' })
         .then(response => response.json())
         .then(data => {
             document.getElementById('sonuc').innerText = data.mesaj;
@@ -253,6 +433,13 @@
     });
     term2.onData(function(data) {
         socket.emit('terminal-girdi-2', {input: data});
+    });
+
+    // Sensör Verileri Dinleyicisi
+    socket.on('sensor_verisi', function(data) {
+        document.getElementById('sensor-sicaklik').innerText = data.sicaklik + " °C";
+        document.getElementById('sensor-basinc').innerText = data.basinc + " hPa";
+        document.getElementById('sensor-mesafe').innerText = data.mesafe + " cm";
     });
 
     // Arayüzdeki terminalden kamerayı arka planda başlatır
