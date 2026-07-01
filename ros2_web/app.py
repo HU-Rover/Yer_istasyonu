@@ -11,6 +11,9 @@ KULLANIM:
 -"Save" butonuna bastıktan sonra "Run" ile çalıştır
 
 """
+from dotenv import load_dotenv
+load_dotenv()
+JETSON_IP = os.getenv("JETSON_IP", "192.168.88.20")
 
 import threading
 import time
@@ -182,16 +185,16 @@ def terminal_girdi_2(data):
 
 # --- 7'Lİ KAMERA YAYINI ALTYAPISI ---
 kameralar = {
-    # Gövde Kameraları
-    "on":    {"url": "rtsp://192.168.88.20:8554/kamera_on",    "kare": None, "kilit": threading.Lock()},
-    "sag":   {"url": "rtsp://192.168.88.20:8554/kamera_sag",   "kare": None, "kilit": threading.Lock()},
-    "sol":   {"url": "rtsp://192.168.88.20:8554/kamera_sol",   "kare": None, "kilit": threading.Lock()},
+    # Gövde (Sürüş) Kameraları
+    "on":    {"url": f"rtsp://{JETSON_IP}:8554/kamera_on",    "kare": None, "kilit": threading.Lock()},
+    "sag":   {"url": f"rtsp://{JETSON_IP}:8554/kamera_sag",   "kare": None, "kilit": threading.Lock()},
+    "sol":   {"url": f"rtsp://{JETSON_IP}:8554/kamera_sol",   "kare": None, "kilit": threading.Lock()},
     
     # Robot Kol Kameraları
-    "kol_1": {"url": "rtsp://192.168.88.20:8554/kol_kamera_1", "kare": None, "kilit": threading.Lock()},
-    "kol_2": {"url": "rtsp://192.168.88.20:8554/kol_kamera_2", "kare": None, "kilit": threading.Lock()},
-    "kol_3": {"url": "rtsp://192.168.88.20:8554/kol_kamera_3", "kare": None, "kilit": threading.Lock()},
-    "kol_4": {"url": "rtsp://192.168.88.20:8554/kol_kamera_4", "kare": None, "kilit": threading.Lock()},
+    "kol_1": {"url": f"rtsp://{JETSON_IP}:8554/kol_kamera_1", "kare": None, "kilit": threading.Lock()},
+    "kol_2": {"url": f"rtsp://{JETSON_IP}:8554/kol_kamera_2", "kare": None, "kilit": threading.Lock()},
+    "kol_3": {"url": f"rtsp://{JETSON_IP}:8554/kol_kamera_3", "kare": None, "kilit": threading.Lock()},
+    "kol_4": {"url": f"rtsp://{JETSON_IP}:8554/kol_kamera_4", "kare": None, "kilit": threading.Lock()},
 }
 
 def tek_kamera_oku(kamera_id):
@@ -253,6 +256,8 @@ def ssh_kamera_baslat():
     global fd2
     try:
         if fd2:
+            # GStreamer pipeline'ları görüntüyü Jetson içindeki yerel sunucuya (localhost) basar.
+            # Bu yüzden buradaki 'localhost:8554' adreslerini DEĞİŞTİRMİYORUZ. Doğru kurgu budur.
             komut = (
                 "echo '\n🚀 MediaMTX ve Çoklu GStreamer Yayını (7 Kamera) başlatılıyor...'\r\n"
                 "nohup ./mediamtx > /dev/null 2>&1 &\r\n"
@@ -272,7 +277,7 @@ def ssh_kamera_baslat():
                 "echo '✅ 3 Gövde ve 4 Robot Kol yayını başarıyla başlatıldı!'\r\n"
             )
             os.write(fd2, komut.encode('utf-8'))
-            return jsonify({"durum": "basarili", "mesaj": "7 adet kamera komutu Jetson terminaline yazdırıldı!"})
+            return jsonify({"durum": "basarili", "mesaj": f"7 adet kamera komutu {JETSON_IP} terminaline gönderildi!"})
         else:
             return jsonify({"durum": "hata", "mesaj": "Terminal 2 hazır değil."}), 500
     except Exception as e:
