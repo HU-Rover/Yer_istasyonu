@@ -23,8 +23,7 @@ import subprocess
 import select
 from flask import Flask, render_template, jsonify, request
 from flask_socketio import SocketIO
-import cv2
-from flask import Response
+
 
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
@@ -42,7 +41,7 @@ kayitli_toggle = "OFF"
 
 # --- 1. TERMINAL OKUMA DÖNGÜSÜ ---
 def terminal_ciktilarini_oku_1():
-    global fd1
+    global fd1, child_pid1
     max_read_bytes = 1024 * 20
     while True:
         socketio.sleep(0.01)
@@ -52,13 +51,21 @@ def terminal_ciktilarini_oku_1():
             if data_ready:
                 try:
                     out = os.read(fd1, max_read_bytes).decode('utf-8', errors='replace')
+                    if not out:
+                        fd1 = None
+                        child_pid1 = None
+                        break
                     socketio.emit('terminal-cikti', {'output': out})
                 except OSError:
-                    pass
+                    fd1 = None
+                    child_pid1 = None
+                    break
+        else:
+            break
 
 # --- 2. TERMINAL OKUMA DÖNGÜSÜ ---
 def terminal_ciktilarini_oku_2():
-    global fd2
+    global fd2, child_pid2
     max_read_bytes = 1024 * 20
     while True:
         socketio.sleep(0.01)
@@ -68,9 +75,17 @@ def terminal_ciktilarini_oku_2():
             if data_ready:
                 try:
                     out = os.read(fd2, max_read_bytes).decode('utf-8', errors='replace')
+                    if not out:
+                        fd2 = None
+                        child_pid2 = None
+                        break
                     socketio.emit('terminal-cikti-2', {'output': out})
                 except OSError:
-                    pass
+                    fd2 = None
+                    child_pid2 = None
+                    break
+        else:
+            break
 
 # --- ACİL DURDURMA (EMERGENCY STOP) ---
 @app.route('/acil-stop', methods=['POST'])
@@ -155,7 +170,7 @@ def baglanti_kuruldu():
         (child_pid1, fd1) = pty.fork()
         if child_pid1 == 0:
             os.environ['TERM'] = 'xterm-256color'
-            subprocess.run(['bash'])
+            os.execvp('bash', ['bash'])
         else:
             socketio.start_background_task(target=terminal_ciktilarini_oku_1)
 
@@ -164,7 +179,7 @@ def baglanti_kuruldu():
         (child_pid2, fd2) = pty.fork()
         if child_pid2 == 0:
             os.environ['TERM'] = 'xterm-256color'
-            subprocess.run(['bash'])
+            os.execvp('bash', ['bash'])
         else:
             socketio.start_background_task(target=terminal_ciktilarini_oku_2)
 
@@ -183,71 +198,6 @@ def terminal_girdi_2(data):
         os.write(fd2, data['input'].encode('utf-8'))
 
 
-# --- 7'Lİ KAMERA YAYINI ALTYAPISI ---
-kameralar = {
-    # Gövde (Sürüş) Kameraları
-    "on":    {"url": f"rtsp://{JETSON_IP}:8554/kamera_on",    "kare": None, "kilit": threading.Lock()},
-    "sag":   {"url": f"rtsp://{JETSON_IP}:8554/kamera_sag",   "kare": None, "kilit": threading.Lock()},
-    "sol":   {"url": f"rtsp://{JETSON_IP}:8554/kamera_sol",   "kare": None, "kilit": threading.Lock()},
-    
-    # Robot Kol Kameraları
-    "kol_1": {"url": f"rtsp://{JETSON_IP}:8554/kol_kamera_1", "kare": None, "kilit": threading.Lock()},
-    "kol_2": {"url": f"rtsp://{JETSON_IP}:8554/kol_kamera_2", "kare": None, "kilit": threading.Lock()},
-    "kol_3": {"url": f"rtsp://{JETSON_IP}:8554/kol_kamera_3", "kare": None, "kilit": threading.Lock()},
-    "kol_4": {"url": f"rtsp://{JETSON_IP}:8554/kol_kamera_4", "kare": None, "kilit": threading.Lock()},
-}
-
-def tek_kamera_oku(kamera_id):
-    import os
-    os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp"
-    
-    cfg = kameralar[kamera_id]
-    while True:
-        cap = cv2.VideoCapture(cfg["url"], cv2.CAP_FFMPEG)
-        if not cap.isOpened():
-            time.sleep(2)
-            continue
-            
-        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-
-        while True:
-            success, frame = cap.read()
-            if success:
-                ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 75]) # Bant genişliği için kaliteyi 75 yaptık
-                if ret:
-                    with cfg["kilit"]:
-                        cfg["kare"] = buffer.tobytes()
-            else:
-                break
-            time.sleep(0.01)
-        
-        cap.release()
-        time.sleep(1)
-
-# Her kamera için ayrı bir arka plan okuma thread'i başlatıyoruz
-for k_id in kameralar.keys():
-    threading.Thread(target=tek_kamera_oku, args=(k_id,), daemon=True).start()
-
-# --- WEB ARAYÜZÜNE ÇOKLU YAYIN GÖNDERME ---
-def kamera_karelerini_al(kamera_id):
-    cfg = kameralar[kamera_id]
-    while True:
-        kare = None
-        with cfg["kilit"]:
-            if cfg["kare"] is not None:
-                kare = cfg["kare"]
-        
-        if kare:
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + kare + b'\r\n')
-        socketio.sleep(0.03)
-
-# Rotaları dinamik hale getiriyoruz
-@app.route('/kamera-yayini/<kamera_id>')
-def video_feed(kamera_id):
-    if kamera_id in kameralar:
-        return Response(kamera_karelerini_al(kamera_id), mimetype='multipart/x-mixed-replace; boundary=frame')
-    return "Kamera bulunamadi", 404
 
 
 # --- KAMERAYI BAŞLAT (AÇIK OLAN SSH ÜZERİNDEN) ---
@@ -264,15 +214,15 @@ def ssh_kamera_baslat():
                 "sleep 2\r\n"
                 
                 # --- GÖVDE (SÜRÜŞ) KAMERALARI ---
-                "nohup gst-launch-1.0 v4l2src device=/dev/video0 ! video/x-raw,width=640,height=480,framerate=30/1 ! videoconvert ! x264enc tune=zerolatency bitrate=600 speed-preset=ultrafast ! rtspclientsink location=rtsp://localhost:8554/kamera_on > /dev/null 2>&1 &\r\n"
-                "nohup gst-launch-1.0 v4l2src device=/dev/video1 ! video/x-raw,width=640,height=480,framerate=30/1 ! videoconvert ! x264enc tune=zerolatency bitrate=600 speed-preset=ultrafast ! rtspclientsink location=rtsp://localhost:8554/kamera_sag > /dev/null 2>&1 &\r\n"
-                "nohup gst-launch-1.0 v4l2src device=/dev/video2 ! video/x-raw,width=640,height=480,framerate=30/1 ! videoconvert ! x264enc tune=zerolatency bitrate=600 speed-preset=ultrafast ! rtspclientsink location=rtsp://localhost:8554/kamera_sol > /dev/null 2>&1 &\r\n"
+                "nohup gst-launch-1.0 v4l2src device=/dev/video0 ! video/x-raw,width=640,height=480,framerate=30/1 ! videoconvert ! x264enc tune=zerolatency bitrate=600 speed-preset=ultrafast ! rtph264pay ! udpsink host=127.0.0.1 port=8000 > /dev/null 2>&1 &\r\n"
+                "nohup gst-launch-1.0 v4l2src device=/dev/video1 ! video/x-raw,width=640,height=480,framerate=30/1 ! videoconvert ! x264enc tune=zerolatency bitrate=600 speed-preset=ultrafast ! rtph264pay ! udpsink host=127.0.0.1 port=8001 > /dev/null 2>&1 &\r\n"
+                "nohup gst-launch-1.0 v4l2src device=/dev/video2 ! video/x-raw,width=640,height=480,framerate=30/1 ! videoconvert ! x264enc tune=zerolatency bitrate=600 speed-preset=ultrafast ! rtph264pay ! udpsink host=127.0.0.1 port=8002 > /dev/null 2>&1 &\r\n"
                 
                 # --- ROBOT KOL KAMERALARI ---
-                "nohup gst-launch-1.0 v4l2src device=/dev/video3 ! video/x-raw,width=640,height=480,framerate=30/1 ! videoconvert ! x264enc tune=zerolatency bitrate=600 speed-preset=ultrafast ! rtspclientsink location=rtsp://localhost:8554/kol_kamera_1 > /dev/null 2>&1 &\r\n"
-                "nohup gst-launch-1.0 v4l2src device=/dev/video4 ! video/x-raw,width=640,height=480,framerate=30/1 ! videoconvert ! x264enc tune=zerolatency bitrate=600 speed-preset=ultrafast ! rtspclientsink location=rtsp://localhost:8554/kol_kamera_2 > /dev/null 2>&1 &\r\n"
-                "nohup gst-launch-1.0 v4l2src device=/dev/video5 ! video/x-raw,width=640,height=480,framerate=30/1 ! videoconvert ! x264enc tune=zerolatency bitrate=600 speed-preset=ultrafast ! rtspclientsink location=rtsp://localhost:8554/kol_kamera_3 > /dev/null 2>&1 &\r\n"
-                "nohup gst-launch-1.0 v4l2src device=/dev/video6 ! video/x-raw,width=640,height=480,framerate=30/1 ! videoconvert ! x264enc tune=zerolatency bitrate=600 speed-preset=ultrafast ! rtspclientsink location=rtsp://localhost:8554/kol_kamera_4 > /dev/null 2>&1 &\r\n"
+                "nohup gst-launch-1.0 v4l2src device=/dev/video3 ! video/x-raw,width=640,height=480,framerate=30/1 ! videoconvert ! x264enc tune=zerolatency bitrate=600 speed-preset=ultrafast ! rtph264pay ! udpsink host=127.0.0.1 port=8003 > /dev/null 2>&1 &\r\n"
+                "nohup gst-launch-1.0 v4l2src device=/dev/video4 ! video/x-raw,width=640,height=480,framerate=30/1 ! videoconvert ! x264enc tune=zerolatency bitrate=600 speed-preset=ultrafast ! rtph264pay ! udpsink host=127.0.0.1 port=8004 > /dev/null 2>&1 &\r\n"
+                "nohup gst-launch-1.0 v4l2src device=/dev/video5 ! video/x-raw,width=640,height=480,framerate=30/1 ! videoconvert ! x264enc tune=zerolatency bitrate=600 speed-preset=ultrafast ! rtph264pay ! udpsink host=127.0.0.1 port=8005 > /dev/null 2>&1 &\r\n"
+                "nohup gst-launch-1.0 v4l2src device=/dev/video6 ! video/x-raw,width=640,height=480,framerate=30/1 ! videoconvert ! x264enc tune=zerolatency bitrate=600 speed-preset=ultrafast ! rtph264pay ! udpsink host=127.0.0.1 port=8006 > /dev/null 2>&1 &\r\n"
                 
                 "echo '✅ 3 Gövde ve 4 Robot Kol yayını başarıyla başlatıldı!'\r\n"
             )
