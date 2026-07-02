@@ -190,6 +190,60 @@
             color: #007bff;
             margin-top: 10px;
         }
+
+        /* WebRTC Video Container Tasarımı */
+        .video-wrapper {
+            position: relative;
+            background-color: #111;
+            border-radius: 8px;
+            overflow: hidden;
+            aspect-ratio: 4/3;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: 1px solid #333;
+        }
+
+        .video-wrapper video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 2;
+            position: relative;
+            background: transparent;
+        }
+
+        /* Yükleniyor Animasyonu */
+        .video-wrapper.loading video {
+            opacity: 0;
+        }
+
+        .video-wrapper::before {
+            content: "Bağlantı Bekleniyor...";
+            position: absolute;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+            z-index: 1;
+            margin-top: 40px;
+        }
+
+        .video-wrapper.loading::after {
+            content: "";
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255,255,255,0.1);
+            border-top: 4px solid #00ff00;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            z-index: 1;
+            margin-bottom: 30px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -245,28 +299,28 @@
     <!-- Gövdedeki Kameralar Sekmesi -->
     <div id="GovdeKameralari" class="tab-content">
         <div class="ana-konteyner" style="max-width:1600px; flex-direction: column; gap: 20px;">
-            <h2>📷 Gövde Canlı Kamera Akışları (GStreamer)</h2>
+            <h2>📷 Gövde Canlı Kamera Akışları (WebRTC/WHEP)</h2>
             
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; width: 100%;">
                 
                 <div class="sol-panel" style="padding: 10px;">
                     <h3 style="margin: 5px 0;">🟢 Ön Kamera</h3>
-                    <div style="background-color: #000; border-radius: 8px; overflow: hidden;">
-                        <img src="/kamera-yayini/on" style="width: 100%; height: auto; display: block;" alt="Ön Kamera Bağlantısı Bekleniyor...">
+                    <div class="video-wrapper loading">
+                        <video id="video-on" autoplay muted playsinline></video>
                     </div>
                 </div>
 
                 <div class="sol-panel" style="padding: 10px;">
                     <h3 style="margin: 5px 0;">🟡 Sağ Kamera</h3>
-                    <div style="background-color: #000; border-radius: 8px; overflow: hidden;">
-                        <img src="/kamera-yayini/sag" style="width: 100%; height: auto; display: block;" alt="Sağ Kamera Bağlantısı Bekleniyor...">
+                    <div class="video-wrapper loading">
+                        <video id="video-sag" autoplay muted playsinline></video>
                     </div>
                 </div>
 
                 <div class="sol-panel" style="padding: 10px;">
                     <h3 style="margin: 5px 0;">🔵 Sol Kamera</h3>
-                    <div style="background-color: #000; border-radius: 8px; overflow: hidden;">
-                        <img src="/kamera-yayini/sol" style="width: 100%; height: auto; display: block;" alt="Sol Kamera Bağlantısı Bekleniyor...">
+                    <div class="video-wrapper loading">
+                        <video id="video-sol" autoplay muted playsinline></video>
                     </div>
                 </div>
 
@@ -277,35 +331,35 @@
     <!-- Robot Koldaki Kameralar Sekmesi -->
     <div id="KolKameralari" class="tab-content">
         <div class="ana-konteyner" style="max-width:1600px; flex-direction: column; gap: 20px;">
-            <h2>🦾 Robot Kol Canlı Kamera Akışları (2x2 Matris)</h2>
+            <h2>🦾 Robot Kol Canlı Kamera Akışları (WebRTC/WHEP)</h2>
             
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; width: 100%;">
                 
                 <div class="sol-panel" style="padding: 10px;">
                     <h3 style="margin: 5px 0;">🦾 Kamera 1 (Ana Eklem)</h3>
-                    <div style="background-color: #000; border-radius: 8px; overflow: hidden;">
-                        <img src="/kamera-yayini/kol_1" style="width: 100%; height: auto; display: block;" alt="Kol Kamera 1 Bekleniyor...">
+                    <div class="video-wrapper loading">
+                        <video id="video-kol1" autoplay muted playsinline></video>
                     </div>
                 </div>
 
                 <div class="sol-panel" style="padding: 10px;">
                     <h3 style="margin: 5px 0;">🦾 Kamera 2 (Bilek)</h3>
-                    <div style="background-color: #000; border-radius: 8px; overflow: hidden;">
-                        <img src="/kamera-yayini/kol_2" style="width: 100%; height: auto; display: block;" alt="Kol Kamera 2 Bekleniyor...">
+                    <div class="video-wrapper loading">
+                        <video id="video-kol2" autoplay muted playsinline></video>
                     </div>
                 </div>
 
                 <div class="sol-panel" style="padding: 10px;">
                     <h3 style="margin: 5px 0;">🦾 Kamera 3 (Kıskaç Üst Açısı)</h3>
-                    <div style="background-color: #000; border-radius: 8px; overflow: hidden;">
-                        <img src="/kamera-yayini/kol_3" style="width: 100%; height: auto; display: block;" alt="Kol Kamera 3 Bekleniyor...">
+                    <div class="video-wrapper loading">
+                        <video id="video-kol3" autoplay muted playsinline></video>
                     </div>
                 </div>
 
                 <div class="sol-panel" style="padding: 10px;">
                     <h3 style="margin: 5px 0;">🦾 Kamera 4 (Kıskaç Detay)</h3>
-                    <div style="background-color: #000; border-radius: 8px; overflow: hidden;">
-                        <img src="/kamera-yayini/kol_4" style="width: 100%; height: auto; display: block;" alt="Kol Kamera 4 Bekleniyor...">
+                    <div class="video-wrapper loading">
+                        <video id="video-kol4" autoplay muted playsinline></video>
                     </div>
                 </div>
 
@@ -338,6 +392,112 @@
     </div>
 
     <script>
+    // --- KAMERA DEĞİŞKENLERİ VE DURUM YÖNETİMİ ---
+    const JETSON_IP = '192.168.88.20'; // app.py'deki varsayılan IP
+    
+    const govdeKameralari = [
+        { name: "kamera_on", id: "video-on" },
+        { name: "kamera_sag", id: "video-sag" },
+        { name: "kamera_sol", id: "video-sol" }
+    ];
+
+    const kolKameralari = [
+        { name: "kol_kamera_1", id: "video-kol1" },
+        { name: "kol_kamera_2", id: "video-kol2" },
+        { name: "kol_kamera_3", id: "video-kol3" },
+        { name: "kol_kamera_4", id: "video-kol4" }
+    ];
+
+    const peerConnections = {}; // id -> RTCPeerConnection
+    const reconnectTimers = {}; // id -> timerId
+
+    function stopWebRTC(videoElementId) {
+        if (reconnectTimers[videoElementId]) {
+            clearTimeout(reconnectTimers[videoElementId]);
+            reconnectTimers[videoElementId] = null;
+        }
+        if (peerConnections[videoElementId]) {
+            peerConnections[videoElementId].close();
+            peerConnections[videoElementId] = null;
+        }
+        const videoElement = document.getElementById(videoElementId);
+        if (videoElement) {
+            videoElement.srcObject = null;
+            if (videoElement.parentElement) {
+                videoElement.parentElement.classList.add('loading');
+            }
+        }
+    }
+
+    async function startWebRTC(streamName, videoElementId) {
+        // Zaten bir bağlantı varsa veya bağlanmaya çalışıyorsa önce temizle
+        stopWebRTC(videoElementId);
+        
+        const videoElement = document.getElementById(videoElementId);
+        if (!videoElement) return;
+
+        const container = videoElement.parentElement;
+        container.classList.add('loading');
+        
+        const peerConnection = new RTCPeerConnection();
+        peerConnections[videoElementId] = peerConnection;
+        
+        peerConnection.ontrack = (event) => {
+            videoElement.srcObject = event.streams[0];
+            videoElement.onloadedmetadata = () => {
+                container.classList.remove('loading');
+                videoElement.play().catch(e => console.error("Oynatma hatası:", e));
+            };
+        };
+
+        peerConnection.onconnectionstatechange = () => {
+            if (peerConnection.connectionState === 'disconnected' || 
+                peerConnection.connectionState === 'failed' || 
+                peerConnection.connectionState === 'closed') {
+                container.classList.add('loading');
+                // Sadece geçerli bağlantı buysa yeniden bağlanmayı dene
+                if (peerConnections[videoElementId] === peerConnection) {
+                    reconnectTimers[videoElementId] = setTimeout(() => startWebRTC(streamName, videoElementId), 3000);
+                }
+            }
+        };
+
+        peerConnection.addTransceiver('video', { direction: 'recvonly' });
+
+        try {
+            const offer = await peerConnection.createOffer();
+            await peerConnection.setLocalDescription(offer);
+
+            const response = await fetch(`http://${JETSON_IP}:8889/${streamName}/whep`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/sdp'
+                },
+                body: offer.sdp
+            });
+
+            if (!response.ok) {
+                throw new Error(`WHEP isteği başarısız: ${response.status}`);
+            }
+
+            const answerSdp = await response.text();
+            
+            // Eğer asenkron işlem sırasında bağlantı sonlandırıldıysa (sekme değişimi vb.) devam etme
+            if (peerConnections[videoElementId] !== peerConnection) return;
+
+            await peerConnection.setRemoteDescription({
+                type: 'answer',
+                sdp: answerSdp
+            });
+        } catch (err) {
+            console.error(`${streamName} için WebRTC hatası:`, err);
+            container.classList.add('loading');
+            if (peerConnections[videoElementId] === peerConnection) {
+                reconnectTimers[videoElementId] = setTimeout(() => startWebRTC(streamName, videoElementId), 3000);
+            }
+        }
+    }
+
     // --- SEKME KONTROLÜ ---
     function openTab(evt, tabName) {
         var i, tabcontent, tablinks;
@@ -353,6 +513,19 @@
         document.getElementById(tabName).style.display = "block";
         document.getElementById(tabName).classList.add("active");
         evt.currentTarget.className += " active";
+        
+        // Aktif olan sekmeye göre kamera yayınlarını aç/kapat
+        if (tabName === "GovdeKameralari") {
+            kolKameralari.forEach(cam => stopWebRTC(cam.id));
+            govdeKameralari.forEach(cam => startWebRTC(cam.name, cam.id));
+        } else if (tabName === "KolKameralari") {
+            govdeKameralari.forEach(cam => stopWebRTC(cam.id));
+            kolKameralari.forEach(cam => startWebRTC(cam.name, cam.id));
+        } else {
+            // Diğer sekmelerdeyken (Terminaller, Sensörler vb.) tüm kameraları durdur
+            govdeKameralari.forEach(cam => stopWebRTC(cam.id));
+            kolKameralari.forEach(cam => stopWebRTC(cam.id));
+        }
     }
 
     // --- KONTROL PANELİ İŞLEMLERİ ---
@@ -481,6 +654,18 @@
     term2.writeln('🚀 HU ROVER 2026 - TERMINAL 2 🚀');
     term2.writeln('İkinci işlem kanalı dinleniyor... \n\r');
     term2.writeln('');
+
+    // İlk açılışta aktif sekmeye göre kameraları başlat
+    document.addEventListener("DOMContentLoaded", () => {
+        const activeTab = document.querySelector('.tab-content.active');
+        if (activeTab) {
+            if (activeTab.id === "GovdeKameralari") {
+                govdeKameralari.forEach(cam => startWebRTC(cam.name, cam.id));
+            } else if (activeTab.id === "KolKameralari") {
+                kolKameralari.forEach(cam => startWebRTC(cam.name, cam.id));
+            }
+        }
+    });
     </script>
 
 </body>
