@@ -97,7 +97,7 @@ def acil_stop():
             if kayitli_path:
                 file_name = os.path.basename(kayitli_path)
             
-            kill_cmd = "pkill -f 'ros2 run' ; pkill -f 'uzaktan_kumanda' ; pkill -f 'ffmpeg' ; pkill -f 'mediamtx' ; pkill -f 'gst-launch-1.0'"
+            kill_cmd = "pkill -f 'ros2 run' ; pkill -f 'uzaktan_kumanda' ; pkill -f 'ffmpeg' ; pkill -f 'mediamtx' ; pkill -f 'gst-launch-1.0' ; pkill -f 'go2rtc'"
             if file_name:
                 kill_cmd += f" ; pkill -f '{file_name}'"
             
@@ -233,7 +233,25 @@ def ssh_kamera_baslat():
     except Exception as e:
         return jsonify({"durum": "hata", "mesaj": str(e)}), 500
 
-
+# --- TAPO WEBRTC STREAM BAŞLAT (go2rtc) ---
+@app.route('/tapo-webrtc-baslat', methods=['POST'])
+def tapo_webrtc_baslat():
+    global fd2
+    try:
+        if fd2:
+            # go2rtc servisini arka planda nohup ile başlat
+            komut = (
+                "echo '\n🚀 go2rtc (WebRTC Servisi) başlatılıyor...'\r\n"
+                "nohup ./go2rtc > /dev/null 2>&1 &\r\n"
+                "sleep 1\r\n"
+                "echo '✅ go2rtc başarıyla başlatıldı! (Port: 1984)'\r\n"
+            )
+            os.write(fd2, komut.encode('utf-8'))
+            return jsonify({"durum": "basarili", "mesaj": "Tapo WebRTC servisi başlatıldı!"})
+        else:
+            return jsonify({"durum": "hata", "mesaj": "Terminal 2 hazır değil."}), 500
+    except Exception as e:
+        return jsonify({"durum": "hata", "mesaj": str(e)}), 500
 
 # --- ROS 2 SENSÖR VERİSİ DİNLEYİCİSİ ---
 import rclpy
