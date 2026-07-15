@@ -257,46 +257,44 @@
         <button class="tab-button" onclick="openTab(event, 'Sensorler')">📡 Sensörler</button>
     </div>
 
-    <!-- Terminaller Sekmesi -->
     <div id="Terminaller" class="tab-content active">
         <div class="ana-konteyner">
             
             <div class="sol-panel">
-            <h2>💻 Ubuntu Terminal 1</h2>
-            <div id="terminal-container-1" class="terminal-kutu"></div>
-            
-            <h2>💻 Ubuntu Terminal 2</h2>
-            <div id="terminal-container-2" class="terminal-kutu"></div>
-        </div>
-
-        <div class="sag-panel">
-            <div class="controls" style="margin-top:0px;">
-                <h2>⚙️ Control Panel</h2>
-                <br>
-                <button class="btn" onclick="arkaplanKumandaKodu()" style="background-color: #28a745;">
-                    ⚙️ Kumanda Kodu Arkaplan (Terminal 1)
-                </button>
-
-                <button class="btn" onclick="jetsonKodu()" style="background-color: #1d7c32; font-weight: bold; border: 2px solid darkred;">
-                    ⚙️ Jetson kodu (Terminal 2)
-                </button>
-
-                <button class="btn" onclick="acilStop()" style="background-color: #dc3545; font-weight: bold; border: 2px solid darkred;">
-                    🛑 Arkaplani durdur (Terminal 1)
-                </button>
-
-                <button class="btn" onclick="sshKameraBaslat()" style="background-color: #007bff; font-weight: bold; border: 2px solid #0056b3;">
-                📷 Kamerayı Başlat (Önce Terminal 2'den Jetson'a Bağlanilmali)
-                </button>
-
-                <p id="sonuc"></p>
+                <h2>💻 Ubuntu Terminal 1</h2>
+                <div id="terminal-container-1" class="terminal-kutu"></div>
+                
+                <h2>💻 Ubuntu Terminal 2</h2>
+                <div id="terminal-container-2" class="terminal-kutu"></div>
             </div>
-        </div>
+
+            <div class="sag-panel">
+                <div class="controls" style="margin-top:0px;">
+                    <h2>⚙️ Control Panel</h2>
+                    <br>
+                    <button class="btn" onclick="arkaplanKumandaKodu()" style="background-color: #28a745;">
+                        ⚙️ Kumanda Kodu Arkaplan (Terminal 1)
+                    </button>
+
+                    <button class="btn" onclick="jetsonKodu()" style="background-color: #1d7c32; font-weight: bold; border: 2px solid darkred;">
+                        ⚙️ Jetson kodu (Terminal 2)
+                    </button>
+
+                    <button class="btn" onclick="acilStop()" style="background-color: #dc3545; font-weight: bold; border: 2px solid darkred;">
+                        🛑 Arkaplani durdur (Terminal 1)
+                    </button>
+
+                    <button class="btn" onclick="sshKameraBaslat()" style="background-color: #007bff; font-weight: bold; border: 2px solid #0056b3;">
+                    📷 Kamerayı Başlat (Önce Terminal 2'den Jetson'a Bağlanilmali)
+                    </button>
+
+                    <p id="sonuc"></p>
+                </div>
+            </div>
 
         </div>
     </div>
 
-    <!-- Gövdedeki Kameralar Sekmesi -->
     <div id="GovdeKameralari" class="tab-content">
         <div class="ana-konteyner" style="max-width:1600px; flex-direction: column; gap: 20px;">
             <h2>📷 Gövde Canlı Kamera Akışları (WebRTC/WHEP)</h2>
@@ -323,12 +321,26 @@
                         <video id="video-sol" autoplay muted playsinline></video>
                     </div>
                 </div>
+                
+                <div class="sol-panel" style="padding: 20px; max-width: 800px; margin: 0 auto; width: 100%;">
+                <h3 style="margin: 5px 0;">🟢 Tapo Canlı Akış (önce başlat sonra bağlan)</h3>
+                <div class="video-wrapper loading" style="aspect-ratio: 16/9;">
+                    <video id="video-tapo" autoplay muted playsinline></video>
+                </div>
+                <div style="margin-top: 15px; text-align: center; display: flex; gap: 15px;">
+                    <button class="btn" onclick="tapoServisBaslat()" style="background-color: #28a745; margin-bottom: 0;">
+                        🚀 go2rtc Servisini Başlat
+                    </button>
+                    <button class="btn" onclick="tapoYayininiBagla()" style="background-color: #007bff; margin-bottom: 0;">
+                        🔄 Yayına Bağlan
+                    </button>
+                </div>
+            </div>
 
             </div>
         </div>
     </div>
 
-    <!-- Robot Koldaki Kameralar Sekmesi -->
     <div id="KolKameralari" class="tab-content">
         <div class="ana-konteyner" style="max-width:1600px; flex-direction: column; gap: 20px;">
             <h2>🦾 Robot Kol Canlı Kamera Akışları (WebRTC/WHEP)</h2>
@@ -367,7 +379,6 @@
         </div>
     </div>
 
-    <!-- Sensörler Sekmesi -->
     <div id="Sensorler" class="tab-content">
         <div class="ana-konteyner">
             <div class="sol-panel" style="flex: 1;">
@@ -406,6 +417,11 @@
         { name: "kol_kamera_2", id: "video-kol2" },
         { name: "kol_kamera_3", id: "video-kol3" },
         { name: "kol_kamera_4", id: "video-kol4" }
+    ];
+
+    // Tapo Kamerası Konfigürasyonu
+    const tapoKameralari = [
+        { name: "tapo_kamera", id: "video-tapo" }
     ];
 
     const peerConnections = {}; // id -> RTCPeerConnection
@@ -468,7 +484,17 @@
             const offer = await peerConnection.createOffer();
             await peerConnection.setLocalDescription(offer);
 
-            const response = await fetch(`http://${JETSON_IP}:8889/${streamName}/whep`, {
+            // DİNAMİK URL YÖNLENDİRME (MediaMTX: 8889 | go2rtc: 1984)
+            let fetchUrl;
+            if (streamName === "tapo_kamera") {
+                // go2rtc'nin standart WHEP Endpoint'i
+                fetchUrl = `http://${JETSON_IP}:1984/api/whep?src=${streamName}`;
+            } else {
+                // Standart Rover kameralarının MediaMTX Endpoint'i
+                fetchUrl = `http://${JETSON_IP}:8889/${streamName}/whep`;
+            }
+
+            const response = await fetch(fetchUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/sdp'
@@ -517,15 +543,39 @@
         // Aktif olan sekmeye göre kamera yayınlarını aç/kapat
         if (tabName === "GovdeKameralari") {
             kolKameralari.forEach(cam => stopWebRTC(cam.id));
+            tapoKameralari.forEach(cam => stopWebRTC(cam.id));
             govdeKameralari.forEach(cam => startWebRTC(cam.name, cam.id));
         } else if (tabName === "KolKameralari") {
             govdeKameralari.forEach(cam => stopWebRTC(cam.id));
+            tapoKameralari.forEach(cam => stopWebRTC(cam.id));
             kolKameralari.forEach(cam => startWebRTC(cam.name, cam.id));
+        } else if (tabName === "TapoKamerasi") {
+            govdeKameralari.forEach(cam => stopWebRTC(cam.id));
+            kolKameralari.forEach(cam => stopWebRTC(cam.id));
+            tapoKameralari.forEach(cam => startWebRTC(cam.name, cam.id));
         } else {
             // Diğer sekmelerdeyken (Terminaller, Sensörler vb.) tüm kameraları durdur
             govdeKameralari.forEach(cam => stopWebRTC(cam.id));
             kolKameralari.forEach(cam => stopWebRTC(cam.id));
+            tapoKameralari.forEach(cam => stopWebRTC(cam.id));
         }
+    }
+
+    // --- TAPO ÖZEL TETİKLEYİCİLERİ ---
+    function tapoServisBaslat() {
+        fetch('/tapo-webrtc-baslat', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.mesaj);
+        })
+        .catch(error => {
+            console.error("Hata oluştu:", error);
+            alert("go2rtc servisi başlatılamadı!");
+        });
+    }
+
+    function tapoYayininiBagla() {
+        startWebRTC("tapo_kamera", "video-tapo");
     }
 
     // --- KONTROL PANELİ İŞLEMLERİ ---
@@ -645,7 +695,7 @@
     term1.writeln('███████║██║   ██║    ██████╔╝██║   ██║██║   ██║█████╗  ██████╔╝');
     term1.writeln('██╔══██║██║   ██║    ██╔══██╗██║   ██║╚██╗ ██╔╝██╔══╝  ██╔══██╗');
     term1.writeln('██║  ██║╚██████╔╝    ██║  ██║╚██████╔╝ ╚████╔╝ ███████╗██║  ██║');
-    term1.writeln('╚═╝  ╚═╝ ╚═════╝     ╚═╝  ╚═╝ ╚═════╝   ╚═══╝  ╚══════╝╚═╝  ╚═╝');
+    term1.writeln('╚═╝  ╚═╝ ╚═════╝     ╚═╝  ╚═╝ ╚═════╝    ╚═══╝  ╚══════╝╚═╝  ╚═╝');
     term1.writeln('');
     term1.writeln('🚀 HU ROVER 2026 - TERMINAL 1 \n\r');
     term1.writeln('');
@@ -663,6 +713,8 @@
                 govdeKameralari.forEach(cam => startWebRTC(cam.name, cam.id));
             } else if (activeTab.id === "KolKameralari") {
                 kolKameralari.forEach(cam => startWebRTC(cam.name, cam.id));
+            } else if (activeTab.id === "TapoKamerasi") {
+                tapoKameralari.forEach(cam => startWebRTC(cam.name, cam.id));
             }
         }
     });
