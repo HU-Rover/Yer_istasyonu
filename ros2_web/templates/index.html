@@ -488,7 +488,7 @@
             let fetchUrl;
             if (streamName === "tapo_kamera") {
                 // go2rtc'nin standart WHEP Endpoint'i
-                fetchUrl = `http://${JETSON_IP}:1984/api/whep?src=${streamName}`;
+                fetchUrl = `http://${JETSON_IP}:1984/api/webrtc?src=${streamName}`;
             } else {
                 // Standart Rover kameralarının MediaMTX Endpoint'i
                 fetchUrl = `http://${JETSON_IP}:8889/${streamName}/whep`;
