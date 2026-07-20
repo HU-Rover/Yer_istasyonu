@@ -386,16 +386,20 @@
                 <p style="color: #666; margin-bottom: 20px; font-size: 16px;">Bu veriler arka planda rastgele oluşturulmuş ROS topic simülasyonlarıdır.</p>
                 <div style="display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 20px;">
                     <div class="sensor-card">
-                        <h3>Sıcaklık</h3>
-                        <div class="value" id="sensor-sicaklik">-- °C</div>
+                        <h3>Sag_on</h3>
+                        <div class="value" id="sensor-sag_on">-- m/s</div>
                     </div>
                     <div class="sensor-card">
-                        <h3>Basınç</h3>
-                        <div class="value" id="sensor-basinc">-- hPa</div>
+                        <h3>Sag_arka</h3>
+                        <div class="value" id="sensor-sag_arka">-- m/s</div>
                     </div>
                     <div class="sensor-card">
-                        <h3>Mesafe</h3>
-                        <div class="value" id="sensor-mesafe">-- cm</div>
+                        <h3>Sol_on</h3>
+                        <div class="value" id="sensor-sol_on">-- m/s</div>
+                    </div>
+                    <div class="sensor-card">
+                        <h3>Sol_arka</h3>
+                        <div class="value" id="sensor-sol_arka">-- m/s</div>
                     </div>
                 </div>
             </div>
@@ -488,7 +492,7 @@
             let fetchUrl;
             if (streamName === "tapo_kamera") {
                 // go2rtc'nin standart WHEP Endpoint'i
-                fetchUrl = `http://${JETSON_IP}:1984/api/webrtc?src=${streamName}`;
+                fetchUrl = `http://192.168.88.20:1984/api/webrtc?src=${streamName}`;;
             } else {
                 // Standart Rover kameralarının MediaMTX Endpoint'i
                 fetchUrl = `http://${JETSON_IP}:8889/${streamName}/whep`;
@@ -660,10 +664,11 @@
 
     // Sensör Verileri Dinleyicisi
     socket.on('sensor_verisi', function(data) {
-        document.getElementById('sensor-sicaklik').innerText = data.sicaklik + " °C";
-        document.getElementById('sensor-basinc').innerText = data.basinc + " hPa";
-        document.getElementById('sensor-mesafe').innerText = data.mesafe + " cm";
-    });
+    document.getElementById('sensor-sag_on').innerText = data.sag_on.toFixed(2) + " m/s";
+    document.getElementById('sensor-sag_arka').innerText = data.sag_arka.toFixed(2) + " m/s";
+    document.getElementById('sensor-sol_on').innerText = data.sol_on.toFixed(2) + " m/s";
+    document.getElementById('sensor-sol_arka').innerText = data.sol_arka.toFixed(2) + " m/s";
+});
 
     // Arayüzdeki terminalden kamerayı arka planda başlatır
     function sshKameraBaslat() {

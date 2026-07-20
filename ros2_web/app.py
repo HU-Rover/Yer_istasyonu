@@ -13,17 +13,17 @@ KULLANIM:
 """
 from dotenv import load_dotenv
 load_dotenv()
+import os
 JETSON_IP = os.getenv("JETSON_IP", "192.168.88.20")
 
 import threading
 import time
-import os
 import pty
 import subprocess
 import select
 from flask import Flask, render_template, jsonify, request
 from flask_socketio import SocketIO
-
+from rover_msgs.msg import EncoderMsg
 
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
@@ -214,7 +214,7 @@ def ssh_kamera_baslat():
                 "sleep 2\r\n"
                 
                 # --- GÖVDE (SÜRÜŞ) KAMERALARI ---
-                "nohup gst-launch-1.0 v4l2src device=/dev/video0 ! video/x-raw,width=640,height=480,framerate=30/1 ! videoconvert ! x264enc tune=zerolatency bitrate=600 speed-preset=ultrafast ! rtph264pay ! udpsink host=127.0.0.1 port=8000 > /dev/null 2>&1 &\r\n"
+                "nohup  gst-launch-1.0 v4l2src device=/dev/video4 ! video/x-raw,width=640,height=480,framerate=30/1 ! videoconvert ! x264enc tune=zerolatency bitrate=2000 speed-preset=ultrafast key-int-max=10 ! h264parse ! flvmux streamable=true ! rtmpsink location=rtmp://localhost:1935/kamera_on sync=false  > /dev/null 2>&1 &\r\n"
                 "nohup gst-launch-1.0 v4l2src device=/dev/video1 ! video/x-raw,width=640,height=480,framerate=30/1 ! videoconvert ! x264enc tune=zerolatency bitrate=600 speed-preset=ultrafast ! rtph264pay ! udpsink host=127.0.0.1 port=8001 > /dev/null 2>&1 &\r\n"
                 "nohup gst-launch-1.0 v4l2src device=/dev/video2 ! video/x-raw,width=640,height=480,framerate=30/1 ! videoconvert ! x264enc tune=zerolatency bitrate=600 speed-preset=ultrafast ! rtph264pay ! udpsink host=127.0.0.1 port=8002 > /dev/null 2>&1 &\r\n"
                 
@@ -256,7 +256,6 @@ def tapo_webrtc_baslat():
 # --- ROS 2 SENSÖR VERİSİ DİNLEYİCİSİ ---
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import String
 import json
 
 # Thread'ler arası güvenli veri aktarımı için global değişken
@@ -266,16 +265,20 @@ class WebSensorSubscriber(Node):
     def __init__(self):
         super().__init__('web_sensor_subscriber')
         self.subscription = self.create_subscription(
-            String,
-            '/sensor_verisi',
+            EncoderMsg,
+            '/encoder',
             self.listener_callback,
             10)
 
     def listener_callback(self, msg):
         global guncel_sensor_verisi
         try:
-            data = json.loads(msg.data)
-            guncel_sensor_verisi = data
+            guncel_sensor_verisi = {
+        "sag_on": msg.sag_on,
+        "sag_arka": msg.sag_arka,
+        "sol_on": msg.sol_on,
+        "sol_arka": msg.sol_arka,
+          }
         except json.JSONDecodeError:
             pass
 
@@ -300,9 +303,10 @@ def sensor_verisi_gonder_loop():
         if guncel_sensor_verisi:
             # Gelen veriyi web arayüzüne gönderiyoruz
             socketio.emit('sensor_verisi', {
-                'sicaklik': guncel_sensor_verisi.get('sicaklik', '--'),
-                'basinc': guncel_sensor_verisi.get('basinc', '--'),
-                'mesafe': guncel_sensor_verisi.get('mesafe', '--')
+                'sag_on': guncel_sensor_verisi.get('sag_on', '--'),
+                'sag_arka': guncel_sensor_verisi.get('sag_arka', '--'),
+                'sol_on': guncel_sensor_verisi.get('sol_on', '--'),
+                'sol_arka': guncel_sensor_verisi.get('sol_arka', '--')
             })
             guncel_sensor_verisi = None
 
