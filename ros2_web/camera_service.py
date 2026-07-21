@@ -23,12 +23,25 @@ CAMERAS = {}
 
 
 def build_camera_config(prefix):
-    return {
-        "ip": os.getenv(f"{prefix}_IP", ""),
-        "port": int(os.getenv(f"{prefix}_PORT", "2020")),
-        "username": os.getenv(f"{prefix}_USERNAME", "32"),
-        "password": os.getenv(f"{prefix}_PASSWORD", "32"),
-    }
+
+    if prefix == "CAMERA1":
+        return {
+            "ip": "192.168.88.100",
+            "port": 2020,
+            "username": "tepegoz31",
+            "password": "tepegoz31",
+        }
+
+    elif prefix == "CAMERA2":
+        return {
+            "ip": "192.168.88.101",
+            "port": 2020,
+            "username": "tepegoz32",
+            "password": "tepegoz32",
+        }
+
+    else:
+        raise ValueError(f"Bilinmeyen kamera prefix: {prefix}")
 
 
 def init_camera(camera_id, prefix):
