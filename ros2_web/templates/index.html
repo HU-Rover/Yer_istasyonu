@@ -244,6 +244,35 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        /* PTZ Buton Stilleri */
+        .ptz-btn {
+            background-color: #343a40;
+            color: white;
+            border: none;
+            height: 45px;
+            font-size: 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            user-select: none;
+            transition: background-color 0.2s, transform 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .ptz-btn:hover {
+            background-color: #007bff;
+        }
+        .ptz-btn:active {
+            background-color: #0056b3;
+            transform: scale(0.92);
+        }
+        .ptz-btn.stop-btn {
+            background-color: #dc3545;
+        }
+        .ptz-btn.stop-btn:hover {
+            background-color: #bd2130;
+        }
     </style>
 </head>
 <body>
@@ -326,7 +355,7 @@
         </div> <!-- Grid Kapanışı -->
 
         <!-- Alt Bölüm: Tapo PTZ Kameralar -->
-        <h2 style="margin-top: 10px;">📹 Tapo PTZ Kameralar (go2rtc)</h2>
+        <h2 style="margin-top: 10px;">📹 Tapo PTZ Kameralar (go2rtc & ONVIF PTZ)</h2>
         
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; width: 100%;">
             
@@ -344,6 +373,22 @@
                         🔄 Tapo 1 Bağlan
                     </button>
                 </div>
+
+                <!-- Tapo 1 PTZ Kontrol Paneli -->
+                <div class="ptz-box" style="margin-top: 15px; text-align: center; background: #f8f9fa; padding: 12px; border-radius: 8px; border: 1px solid #e0e0e0;">
+                    <h4 style="margin: 0 0 10px 0; font-size: 14px; color: #444;">🎮 Tapo 1 PTZ Yön Kontrolü</h4>
+                    <div style="display: grid; grid-template-columns: repeat(3, 50px); gap: 6px; justify-content: center;">
+                        <div></div>
+                        <button class="ptz-btn" onmousedown="ptzHareket('tapo_kamera_1', 'up')" onmouseup="ptzDurdur('tapo_kamera_1')" ontouchstart="ptzHareket('tapo_kamera_1', 'up')" ontouchend="ptzDurdur('tapo_kamera_1')" title="Yukarı">▲</button>
+                        <div></div>
+                        <button class="ptz-btn" onmousedown="ptzHareket('tapo_kamera_1', 'left')" onmouseup="ptzDurdur('tapo_kamera_1')" ontouchstart="ptzHareket('tapo_kamera_1', 'left')" ontouchend="ptzDurdur('tapo_kamera_1')" title="Sol">◄</button>
+                        <button class="ptz-btn stop-btn" onclick="ptzDurdur('tapo_kamera_1')" title="Dur">⏹</button>
+                        <button class="ptz-btn" onmousedown="ptzHareket('tapo_kamera_1', 'right')" onmouseup="ptzDurdur('tapo_kamera_1')" ontouchstart="ptzHareket('tapo_kamera_1', 'right')" ontouchend="ptzDurdur('tapo_kamera_1')" title="Sağ">►</button>
+                        <div></div>
+                        <button class="ptz-btn" onmousedown="ptzHareket('tapo_kamera_1', 'down')" onmouseup="ptzDurdur('tapo_kamera_1')" ontouchstart="ptzHareket('tapo_kamera_1', 'down')" ontouchend="ptzDurdur('tapo_kamera_1')" title="Aşağı">▼</button>
+                        <div></div>
+                    </div>
+                </div>
             </div>
 
             <!-- Tapo Kamera 2 -->
@@ -359,6 +404,22 @@
                     <button class="btn" onclick="tapoYayininiBagla('tapo_kamera_2', 'video-tapo-2')" style="background-color: #007bff; margin-bottom: 0; font-size: 14px; padding: 10px;">
                         🔄 Tapo 2 Bağlan
                     </button>
+                </div>
+
+                <!-- Tapo 2 PTZ Kontrol Paneli -->
+                <div class="ptz-box" style="margin-top: 15px; text-align: center; background: #f8f9fa; padding: 12px; border-radius: 8px; border: 1px solid #e0e0e0;">
+                    <h4 style="margin: 0 0 10px 0; font-size: 14px; color: #444;">🎮 Tapo 2 PTZ Yön Kontrolü</h4>
+                    <div style="display: grid; grid-template-columns: repeat(3, 50px); gap: 6px; justify-content: center;">
+                        <div></div>
+                        <button class="ptz-btn" onmousedown="ptzHareket('tapo_kamera_2', 'up')" onmouseup="ptzDurdur('tapo_kamera_2')" ontouchstart="ptzHareket('tapo_kamera_2', 'up')" ontouchend="ptzDurdur('tapo_kamera_2')" title="Yukarı">▲</button>
+                        <div></div>
+                        <button class="ptz-btn" onmousedown="ptzHareket('tapo_kamera_2', 'left')" onmouseup="ptzDurdur('tapo_kamera_2')" ontouchstart="ptzHareket('tapo_kamera_2', 'left')" ontouchend="ptzDurdur('tapo_kamera_2')" title="Sol">◄</button>
+                        <button class="ptz-btn stop-btn" onclick="ptzDurdur('tapo_kamera_2')" title="Dur">⏹</button>
+                        <button class="ptz-btn" onmousedown="ptzHareket('tapo_kamera_2', 'right')" onmouseup="ptzDurdur('tapo_kamera_2')" ontouchstart="ptzHareket('tapo_kamera_2', 'right')" ontouchend="ptzDurdur('tapo_kamera_2')" title="Sağ">►</button>
+                        <div></div>
+                        <button class="ptz-btn" onmousedown="ptzHareket('tapo_kamera_2', 'down')" onmouseup="ptzDurdur('tapo_kamera_2')" ontouchstart="ptzHareket('tapo_kamera_2', 'down')" ontouchend="ptzDurdur('tapo_kamera_2')" title="Aşağı">▼</button>
+                        <div></div>
+                    </div>
                 </div>
             </div>
 
@@ -602,6 +663,27 @@
 
     function tapoYayininiBagla(kameraAdi, videoElementId) {
         startWebRTC(kameraAdi, videoElementId);
+    }
+
+    // --- TAPO PTZ KONTROL İŞLEMLERİ (camera_service.py: 5001) ---
+    const CAMERA_SERVICE_PORT = '5001';
+
+    function ptzHareket(cameraId, direction) {
+        const host = window.location.hostname || 'localhost';
+        const url = `http://${host}:${CAMERA_SERVICE_PORT}/${cameraId}/move/${direction}`;
+        fetch(url, { method: 'POST' })
+        .then(response => response.json())
+        .then(data => console.log(`PTZ Hareket (${cameraId} - ${direction}):`, data))
+        .catch(error => console.error(`PTZ Hareket Hatası (${cameraId}):`, error));
+    }
+
+    function ptzDurdur(cameraId) {
+        const host = window.location.hostname || 'localhost';
+        const url = `http://${host}:${CAMERA_SERVICE_PORT}/${cameraId}/stop`;
+        fetch(url, { method: 'POST' })
+        .then(response => response.json())
+        .then(data => console.log(`PTZ Durdu (${cameraId}):`, data))
+        .catch(error => console.error(`PTZ Durdurma Hatası (${cameraId}):`, error));
     }
 
     // --- KONTROL PANELİ İŞLEMLERİ ---
