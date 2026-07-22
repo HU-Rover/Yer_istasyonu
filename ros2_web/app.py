@@ -257,6 +257,8 @@ def tapo_webrtc_baslat():
             return jsonify({"durum": "hata", "mesaj": "Terminal 2 hazır değil."}), 500
     except Exception as e:
         return jsonify({"durum": "hata", "mesaj": str(e)}), 500
+
+# camera_service.py scriptini otomatik çalıştır
 def start_camera_service():
     if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug:
         try:
