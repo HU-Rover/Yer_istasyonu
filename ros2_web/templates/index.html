@@ -30,7 +30,7 @@
             margin: 0 auto;
         }
 
-        /* Sol Panel (Terminal) */
+        /* Sol Panel (Terminal & Kameralar) */
         .sol-panel {
             flex: 2;
             background-color: #fff;
@@ -55,7 +55,7 @@
         /* Terminal Kutusu Tasarımı (Ortak Class) */
         .terminal-kutu {
             width: 100%;
-            height: 500px; /* Ekrana daha rahat sığması için 300px tutuldu */
+            height: 500px; 
             border: 2px solid #333;
             padding: 10px;
             background-color: #000;
@@ -281,11 +281,11 @@
 
     <div class="tab-container">
         <button class="tab-button active" onclick="openTab(event, 'Terminaller')">💻 Terminaller</button>
-        <button class="tab-button" onclick="openTab(event, 'GovdeKameralari')">📷 Gövdedeki Kameralar</button>
-        <button class="tab-button" onclick="openTab(event, 'KolKameralari')">🦾 Robot Koldaki Kameralar</button>
+        <button class="tab-button" onclick="openTab(event, 'Kameralar')">📷 Tüm Kameralar</button>
         <button class="tab-button" onclick="openTab(event, 'Sensorler')">📡 Sensörler</button>
     </div>
 
+    <!-- TERMINALLER SEKMESI -->
     <div id="Terminaller" class="tab-content active">
         <div class="ana-konteyner">
             
@@ -324,82 +324,38 @@
         </div>
     </div>
 
-    <div id="GovdeKameralari" class="tab-content">
-    <div class="ana-konteyner" style="max-width:1600px; flex-direction: column; gap: 20px;">
-        <h2>📷 Gövde Canlı Kamera Akışları (WebRTC/WHEP)</h2>
-        
-        <!-- Üst Grid: Ön, Sağ, Sol Kameralar -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; width: 100%;">
+    <!-- TÜM KAMERALAR SEKMESI -->
+    <div id="Kameralar" class="tab-content">
+        <div class="ana-konteyner" style="max-width:1600px; flex-direction: column; gap: 20px;">
             
-            <div class="sol-panel" style="padding: 10px;">
-                <h3 style="margin: 5px 0;">🟢 Ön Kamera</h3>
-                <div class="video-wrapper loading">
-                    <video id="video-on" autoplay muted playsinline></video>
-                </div>
-            </div>
-
-            <div class="sol-panel" style="padding: 10px;">
-                <h3 style="margin: 5px 0;">🟡 Sağ Kamera</h3>
-                <div class="video-wrapper loading">
-                    <video id="video-sag" autoplay muted playsinline></video>
-                </div>
-            </div>
-
-            <div class="sol-panel" style="padding: 10px;">
-                <h3 style="margin: 5px 0;">🔵 Sol Kamera</h3>
-                <div class="video-wrapper loading">
-                    <video id="video-sol" autoplay muted playsinline></video>
-                </div>
-            </div>
-
-        </div> <!-- Grid Kapanışı -->
-
-        <!-- Alt Bölüm: Tapo PTZ Kamera 1 -->
-        <h2 style="margin-top: 10px;">📹 Tapo PTZ Kameralar (go2rtc & ONVIF PTZ)</h2>
-        
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; width: 100%;">
-            
-            <!-- Tapo Kamera 1 -->
-            <div class="sol-panel" style="padding: 15px;">
-                <h3 style="margin: 5px 0;">🟢 Tapo Kamera 1</h3>
-                <div class="video-wrapper loading" style="aspect-ratio: 16/9;">
-                    <video id="video-tapo-1" autoplay muted playsinline></video>
-                </div>
-                <div style="margin-top: 15px; text-align: center; display: flex; gap: 10px;">
-                    <button class="btn" onclick="tapoServisBaslat()" style="background-color: #28a745; margin-bottom: 0; font-size: 14px; padding: 10px;">
-                        🚀 go2rtc Servisi
-                    </button>
-                    <button class="btn" onclick="tapoYayininiBagla('tapo_kamera_1', 'video-tapo-1')" style="background-color: #007bff; margin-bottom: 0; font-size: 14px; padding: 10px;">
-                        🔄 Tapo 1 Bağlan
-                    </button>
+            <!-- GÖVDE KAMERALARI -->
+            <h2 style="border-bottom: 2px solid #ccc; padding-bottom: 10px; width: 100%;">📷 Gövde Canlı Kamera Akışları (WebRTC/WHEP)</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; width: 100%;">
+                <div class="sol-panel" style="padding: 10px;">
+                    <h3 style="margin: 5px 0;">🟢 Ön Kamera</h3>
+                    <div class="video-wrapper loading">
+                        <video id="video-on" autoplay muted playsinline></video>
+                    </div>
                 </div>
 
-                <!-- Tapo 1 PTZ Kontrol Paneli -->
-                <div class="ptz-box" style="margin-top: 15px; text-align: center; background: #f8f9fa; padding: 12px; border-radius: 8px; border: 1px solid #e0e0e0;">
-                    <h4 style="margin: 0 0 10px 0; font-size: 14px; color: #444;">🎮 Tapo 1 PTZ Yön Kontrolü</h4>
-                    <div style="display: grid; grid-template-columns: repeat(3, 50px); gap: 6px; justify-content: center;">
-                        <div></div>
-                        <button class="ptz-btn" onmousedown="ptzHareket('tapo_kamera_1', 'up')" onmouseup="ptzDurdur('tapo_kamera_1')" ontouchstart="ptzHareket('tapo_kamera_1', 'up')" ontouchend="ptzDurdur('tapo_kamera_1')" title="Yukarı">▲</button>
-                        <div></div>
-                        <button class="ptz-btn" onmousedown="ptzHareket('tapo_kamera_1', 'left')" onmouseup="ptzDurdur('tapo_kamera_1')" ontouchstart="ptzHareket('tapo_kamera_1', 'left')" ontouchend="ptzDurdur('tapo_kamera_1')" title="Sol">◄</button>
-                        <button class="ptz-btn stop-btn" onclick="ptzDurdur('tapo_kamera_1')" title="Dur">⏹</button>
-                        <button class="ptz-btn" onmousedown="ptzHareket('tapo_kamera_1', 'right')" onmouseup="ptzDurdur('tapo_kamera_1')" ontouchstart="ptzHareket('tapo_kamera_1', 'right')" ontouchend="ptzDurdur('tapo_kamera_1')" title="Sağ">►</button>
-                        <div></div>
-                        <button class="ptz-btn" onmousedown="ptzHareket('tapo_kamera_1', 'down')" onmouseup="ptzDurdur('tapo_kamera_1')" ontouchstart="ptzHareket('tapo_kamera_1', 'down')" ontouchend="ptzDurdur('tapo_kamera_1')" title="Aşağı">▼</button>
-                        <div></div>
+                <div class="sol-panel" style="padding: 10px;">
+                    <h3 style="margin: 5px 0;">🟡 Sağ Kamera</h3>
+                    <div class="video-wrapper loading">
+                        <video id="video-sag" autoplay muted playsinline></video>
+                    </div>
+                </div>
+
+                <div class="sol-panel" style="padding: 10px;">
+                    <h3 style="margin: 5px 0;">🔵 Sol Kamera</h3>
+                    <div class="video-wrapper loading">
+                        <video id="video-sol" autoplay muted playsinline></video>
                     </div>
                 </div>
             </div>
 
-        </div> <!-- Tapo Grid Kapanışı -->
-    </div>
-</div>
-
-    <div id="KolKameralari" class="tab-content">
-        <div class="ana-konteyner" style="max-width:1600px; flex-direction: column; gap: 20px;">
-            <h2>🦾 Robot Kol Canlı Kamera Akışları (WebRTC/WHEP)</h2>
-            
-            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; width: 100%;">
+            <!-- ROBOT KOL KAMERALARI -->
+            <h2 style="border-bottom: 2px solid #ccc; padding-bottom: 10px; width: 100%; margin-top: 20px;">🦾 Robot Kol Canlı Kamera Akışları (WebRTC/WHEP)</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; width: 100%;">
                 
                 <div class="sol-panel" style="padding: 10px;">
                     <h3 style="margin: 5px 0;">🦾 Kamera 1 (Ana Eklem)</h3>
@@ -431,12 +387,45 @@
 
             </div>
             
-            <h2 style="margin-top: 10px;">📹 Tapo PTZ Kamera 2 (go2rtc & ONVIF PTZ)</h2>
+            <!-- TAPO PTZ KAMERALAR -->
+            <h2 style="border-bottom: 2px solid #ccc; padding-bottom: 10px; width: 100%; margin-top: 20px;">📹 Tapo PTZ Kameralar (go2rtc & ONVIF PTZ)</h2>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; width: 100%;">
                 
+                <!-- Tapo Kamera 1 -->
+                <div class="sol-panel" style="padding: 15px;">
+                    <h3 style="margin: 5px 0;">🟢 Tapo Kamera 1 (Gövde)</h3>
+                    <div class="video-wrapper loading" style="aspect-ratio: 16/9;">
+                        <video id="video-tapo-1" autoplay muted playsinline></video>
+                    </div>
+                    <div style="margin-top: 15px; text-align: center; display: flex; gap: 10px;">
+                        <button class="btn" onclick="tapoServisBaslat()" style="background-color: #28a745; margin-bottom: 0; font-size: 14px; padding: 10px;">
+                            🚀 go2rtc Servisi
+                        </button>
+                        <button class="btn" onclick="tapoYayininiBagla('tapo_kamera_1', 'video-tapo-1')" style="background-color: #007bff; margin-bottom: 0; font-size: 14px; padding: 10px;">
+                            🔄 Tapo 1 Bağlan
+                        </button>
+                    </div>
+
+                    <!-- Tapo 1 PTZ Kontrol Paneli -->
+                    <div class="ptz-box" style="margin-top: 15px; text-align: center; background: #f8f9fa; padding: 12px; border-radius: 8px; border: 1px solid #e0e0e0;">
+                        <h4 style="margin: 0 0 10px 0; font-size: 14px; color: #444;">🎮 Tapo 1 PTZ Yön Kontrolü</h4>
+                        <div style="display: grid; grid-template-columns: repeat(3, 50px); gap: 6px; justify-content: center;">
+                            <div></div>
+                            <button class="ptz-btn" onmousedown="ptzHareket('tapo_kamera_1', 'up')" onmouseup="ptzDurdur('tapo_kamera_1')" ontouchstart="ptzHareket('tapo_kamera_1', 'up')" ontouchend="ptzDurdur('tapo_kamera_1')" title="Yukarı">▲</button>
+                            <div></div>
+                            <button class="ptz-btn" onmousedown="ptzHareket('tapo_kamera_1', 'left')" onmouseup="ptzDurdur('tapo_kamera_1')" ontouchstart="ptzHareket('tapo_kamera_1', 'left')" ontouchend="ptzDurdur('tapo_kamera_1')" title="Sol">◄</button>
+                            <button class="ptz-btn stop-btn" onclick="ptzDurdur('tapo_kamera_1')" title="Dur">⏹</button>
+                            <button class="ptz-btn" onmousedown="ptzHareket('tapo_kamera_1', 'right')" onmouseup="ptzDurdur('tapo_kamera_1')" ontouchstart="ptzHareket('tapo_kamera_1', 'right')" ontouchend="ptzDurdur('tapo_kamera_1')" title="Sağ">►</button>
+                            <div></div>
+                            <button class="ptz-btn" onmousedown="ptzHareket('tapo_kamera_1', 'down')" onmouseup="ptzDurdur('tapo_kamera_1')" ontouchstart="ptzHareket('tapo_kamera_1', 'down')" ontouchend="ptzDurdur('tapo_kamera_1')" title="Aşağı">▼</button>
+                            <div></div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Tapo Kamera 2 -->
                 <div class="sol-panel" style="padding: 15px;">
-                    <h3 style="margin: 5px 0;">🟢 Tapo Kamera 2</h3>
+                    <h3 style="margin: 5px 0;">🟢 Tapo Kamera 2 (Kol)</h3>
                     <div class="video-wrapper loading" style="aspect-ratio: 16/9;">
                         <video id="video-tapo-2" autoplay muted playsinline></video>
                     </div>
@@ -467,10 +456,10 @@
                 </div>
 
             </div>
-
         </div>
     </div>
 
+    <!-- SENSÖRLER SEKMESI -->
     <div id="Sensorler" class="tab-content">
         <div class="ana-konteyner">
             <div class="sol-panel" style="flex: 1;">
@@ -500,7 +489,7 @@
 
     <script>
     // --- KAMERA DEĞİŞKENLERİ VE DURUM YÖNETİMİ ---
-    const JETSON_IP = '192.168.88.20'; // app.py'deki varsayılan IP
+    const JETSON_IP = '192.168.88.20'; 
     
     const govdeKameralari = [
         { name: "kamera_on", id: "video-on" },
@@ -515,8 +504,8 @@
         { name: "kol_kamera_4", id: "video-kol4" }
     ];
 
-    const peerConnections = {}; // id -> RTCPeerConnection
-    const reconnectTimers = {}; // id -> timerId
+    const peerConnections = {}; 
+    const reconnectTimers = {}; 
 
     function stopWebRTC(videoElementId) {
         if (reconnectTimers[videoElementId]) {
@@ -537,7 +526,6 @@
     }
 
     async function startWebRTC(streamName, videoElementId) {
-        // Zaten bir bağlantı varsa veya bağlanmaya çalışıyorsa önce temizle
         stopWebRTC(videoElementId);
         
         const videoElement = document.getElementById(videoElementId);
@@ -562,7 +550,6 @@
                 peerConnection.connectionState === 'failed' || 
                 peerConnection.connectionState === 'closed') {
                 container.classList.add('loading');
-                // Sadece geçerli bağlantı buysa yeniden bağlanmayı dene
                 if (peerConnections[videoElementId] === peerConnection) {
                     reconnectTimers[videoElementId] = setTimeout(() => startWebRTC(streamName, videoElementId), 3000);
                 }
@@ -575,13 +562,10 @@
             const offer = await peerConnection.createOffer();
             await peerConnection.setLocalDescription(offer);
 
-            // DİNAMİK URL YÖNLENDİRME (MediaMTX: 8889 | go2rtc: 1984)
             let fetchUrl;
             if (streamName === "tapo_kamera_1" || streamName === "tapo_kamera_2") {
-                // go2rtc'nin standart WHEP Endpoint'i
                 fetchUrl = `http://192.168.88.20:1984/api/webrtc?src=${streamName}`;
             } else {
-                 // Standart Rover kameralarının MediaMTX Endpoint'i
                 fetchUrl = `http://${JETSON_IP}:8889/${streamName}/whep`;
             }
 
@@ -599,7 +583,6 @@
 
             const answerSdp = await response.text();
             
-            // Eğer asenkron işlem sırasında bağlantı sonlandırıldıysa (sekme değişimi vb.) devam etme
             if (peerConnections[videoElementId] !== peerConnection) return;
 
             await peerConnection.setRemoteDescription({
@@ -632,18 +615,12 @@
         evt.currentTarget.className += " active";
         
         // Aktif olan sekmeye göre kamera yayınlarını aç/kapat
-        if (tabName === "GovdeKameralari") {
-            kolKameralari.forEach(cam => stopWebRTC(cam.id));
-            stopWebRTC("video-tapo-2");
-            startWebRTC("tapo_kamera_1", "video-tapo-1");
+        if (tabName === "Kameralar") {
             govdeKameralari.forEach(cam => startWebRTC(cam.name, cam.id));
-        } else if (tabName === "KolKameralari") {
-            govdeKameralari.forEach(cam => stopWebRTC(cam.id));
-            stopWebRTC("video-tapo-1");
-            startWebRTC("tapo_kamera_2", "video-tapo-2");
             kolKameralari.forEach(cam => startWebRTC(cam.name, cam.id));
+            startWebRTC("tapo_kamera_1", "video-tapo-1");
+            startWebRTC("tapo_kamera_2", "video-tapo-2");
         } else {
-            // Diğer sekmelerdeyken (Terminaller, Sensörler vb.) tüm kameraları durdur
             govdeKameralari.forEach(cam => stopWebRTC(cam.id));
             kolKameralari.forEach(cam => stopWebRTC(cam.id));
             stopWebRTC("video-tapo-1");
@@ -690,8 +667,6 @@
     }
 
     // --- KONTROL PANELİ İŞLEMLERİ ---
-
-    //sabit kumanda kodu
     function arkaplanKumandaKodu() {
         fetch('/kumanda-komut', { method: 'POST' })
         .then(response => response.json())
@@ -704,7 +679,6 @@
         });
     }
 
-    // Jetson kodu
     function jetsonKodu() {
         fetch('/jetson-kodu', { method: 'POST' })
         .then(response => response.json())
@@ -717,7 +691,6 @@
         });
     }
 
-    // ACİL STOP
     function acilStop() {
         const sonucAlani = document.getElementById('sonuc');
         sonucAlani.innerText = "Terminating processes...";
@@ -749,7 +722,6 @@
     });
     term2.open(document.getElementById('terminal-container-2'));
 
-
     // Socket Bağlantısı
     const socket = io.connect('http://' + document.domain + ':' + location.port);
 
@@ -771,11 +743,11 @@
 
     // Sensör Verileri Dinleyicisi
     socket.on('sensor_verisi', function(data) {
-    document.getElementById('sensor-sag_on').innerText = data.sag_on.toFixed(2) + " m/s";
-    document.getElementById('sensor-sag_arka').innerText = data.sag_arka.toFixed(2) + " m/s";
-    document.getElementById('sensor-sol_on').innerText = data.sol_on.toFixed(2) + " m/s";
-    document.getElementById('sensor-sol_arka').innerText = data.sol_arka.toFixed(2) + " m/s";
-});
+        document.getElementById('sensor-sag_on').innerText = data.sag_on.toFixed(2) + " m/s";
+        document.getElementById('sensor-sag_arka').innerText = data.sag_arka.toFixed(2) + " m/s";
+        document.getElementById('sensor-sol_on').innerText = data.sol_on.toFixed(2) + " m/s";
+        document.getElementById('sensor-sol_arka').innerText = data.sol_arka.toFixed(2) + " m/s";
+    });
 
     // Arayüzdeki terminalden kamerayı arka planda başlatır
     function sshKameraBaslat() {
@@ -820,14 +792,11 @@
     // İlk açılışta aktif sekmeye göre kameraları başlat
     document.addEventListener("DOMContentLoaded", () => {
         const activeTab = document.querySelector('.tab-content.active');
-        if (activeTab) {
-            if (activeTab.id === "GovdeKameralari") {
-                govdeKameralari.forEach(cam => startWebRTC(cam.name, cam.id));
-                startWebRTC("tapo_kamera_1", "video-tapo-1");
-            } else if (activeTab.id === "KolKameralari") {
-                kolKameralari.forEach(cam => startWebRTC(cam.name, cam.id));
-                startWebRTC("tapo_kamera_2", "video-tapo-2");
-            }
+        if (activeTab && activeTab.id === "Kameralar") {
+            govdeKameralari.forEach(cam => startWebRTC(cam.name, cam.id));
+            kolKameralari.forEach(cam => startWebRTC(cam.name, cam.id));
+            startWebRTC("tapo_kamera_1", "video-tapo-1");
+            startWebRTC("tapo_kamera_2", "video-tapo-2");
         }
     });
     </script>
